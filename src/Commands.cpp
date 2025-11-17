@@ -1,9 +1,5 @@
 #include "Commands.hpp"
 
-// CommandInstance constructor definition - must be in the same translation unit
-Commands::CommandInstance::CommandInstance(Command c, std::initializer_list<int> vals) 
-    : cmd(c), values(vals) {}
-
 void Commands::print_commands() {
     for (const auto& instance : commandList) {
         std::cout << commandNames.at(instance.cmd);

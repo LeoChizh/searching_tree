@@ -5,7 +5,7 @@
 #include <sstream>
 
 // Tests for PUBLIC interface only - black box testing
-class CommandsTest_PublicInterface : public ::testing::Test {
+class CommandsTest : public ::testing::Test {
 protected:
     void SetUp() override {}
     void TearDown() override {}
@@ -14,31 +14,31 @@ protected:
 };
 
 // Basic functionality tests
-TEST_F(CommandsTest_PublicInterface, DefaultConstruction) {
+TEST_F(CommandsTest, DefaultConstruction) {
     SUCCEED();
 }
 
-TEST_F(CommandsTest_PublicInterface, AddCommandNoValues) {
+TEST_F(CommandsTest, AddCommandNoValues) {
     cmd.add_command(Commands::Command::add);
     cmd.add_command(Commands::Command::find_min);
     cmd.add_command(Commands::Command::number_smaller);
     SUCCEED();
 }
 
-TEST_F(CommandsTest_PublicInterface, AddCommandSingleValue) {
+TEST_F(CommandsTest, AddCommandSingleValue) {
     cmd.add_command(Commands::Command::add, {42});
     cmd.add_command(Commands::Command::find_min, {100});
     cmd.add_command(Commands::Command::number_smaller, {7});
     SUCCEED();
 }
 
-TEST_F(CommandsTest_PublicInterface, AddCommandMultipleValues) {
+TEST_F(CommandsTest, AddCommandMultipleValues) {
     cmd.add_command(Commands::Command::add, {10, 20});
     cmd.add_command(Commands::Command::number_smaller, {1, 2, 3, 4, 5});
     SUCCEED();
 }
 
-TEST_F(CommandsTest_PublicInterface, AddMixedCommands) {
+TEST_F(CommandsTest, AddMixedCommands) {
     cmd.add_command(Commands::Command::add);
     cmd.add_command(Commands::Command::find_min, {5});
     cmd.add_command(Commands::Command::number_smaller, {1, 2, 3});
@@ -47,14 +47,14 @@ TEST_F(CommandsTest_PublicInterface, AddMixedCommands) {
 }
 
 // Output tests
-TEST_F(CommandsTest_PublicInterface, PrintEmptyCommands) {
+TEST_F(CommandsTest, PrintEmptyCommands) {
     testing::internal::CaptureStdout();
     cmd.print_commands();
     std::string output = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(output.empty());
 }
 
-TEST_F(CommandsTest_PublicInterface, PrintCommandsOutput) {
+TEST_F(CommandsTest, PrintCommandsOutput) {
     cmd.add_command(Commands::Command::add, {10, 20});
     cmd.add_command(Commands::Command::find_min, {5});
     cmd.add_command(Commands::Command::number_smaller);
@@ -72,7 +72,7 @@ TEST_F(CommandsTest_PublicInterface, PrintCommandsOutput) {
     EXPECT_TRUE(output.find("5") != std::string::npos);
 }
 
-TEST_F(CommandsTest_PublicInterface, CommandOrderPreserved) {
+TEST_F(CommandsTest, CommandOrderPreserved) {
     cmd.add_command(Commands::Command::add, {1});
     cmd.add_command(Commands::Command::find_min, {2});
     cmd.add_command(Commands::Command::number_smaller, {3});
@@ -93,7 +93,7 @@ TEST_F(CommandsTest_PublicInterface, CommandOrderPreserved) {
 }
 
 // Edge cases
-TEST_F(CommandsTest_PublicInterface, EdgeCaseValues) {
+TEST_F(CommandsTest, EdgeCaseValues) {
     cmd.add_command(Commands::Command::add, {0});
     cmd.add_command(Commands::Command::find_min, {-1});
     cmd.add_command(Commands::Command::number_smaller, std::initializer_list<int>{INT_MAX});
@@ -106,7 +106,7 @@ TEST_F(CommandsTest_PublicInterface, EdgeCaseValues) {
 }
 
 // Parser tests through public interface
-TEST_F(CommandsTest_PublicInterface, ParserValidFormattedInput) {
+TEST_F(CommandsTest, ParserValidFormattedInput) {
     std::istringstream input("k 4 k 3 k 2 m 1 n 1");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     cmd.parse_from_stdin();
@@ -117,7 +117,7 @@ TEST_F(CommandsTest_PublicInterface, ParserValidFormattedInput) {
     EXPECT_EQ(cmd.get_command_values(0)[0], 4);
 }
 
-TEST_F(CommandsTest_PublicInterface, ParserAttachedNumbers) {
+TEST_F(CommandsTest, ParserAttachedNumbers) {
     std::istringstream input("k4 k3 k2 m1 n1");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     cmd.parse_from_stdin();
@@ -128,7 +128,7 @@ TEST_F(CommandsTest_PublicInterface, ParserAttachedNumbers) {
     EXPECT_EQ(cmd.get_command_values(0)[0], 4);
 }
 
-TEST_F(CommandsTest_PublicInterface, ParserMixedFormat) {
+TEST_F(CommandsTest, ParserMixedFormat) {
     std::istringstream input("k 4 k3 k 2 m1 n 1");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     cmd.parse_from_stdin();
@@ -137,7 +137,7 @@ TEST_F(CommandsTest_PublicInterface, ParserMixedFormat) {
     EXPECT_EQ(cmd.size(), 5);
 }
 
-TEST_F(CommandsTest_PublicInterface, ParserCommandsWithoutValues) {
+TEST_F(CommandsTest, ParserCommandsWithoutValues) {
     std::istringstream input("k m n k 5");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     cmd.parse_from_stdin();
@@ -148,7 +148,7 @@ TEST_F(CommandsTest_PublicInterface, ParserCommandsWithoutValues) {
     EXPECT_EQ(cmd.get_command_values(3)[0], 5);
 }
 
-TEST_F(CommandsTest_PublicInterface, ParserInvalidInput) {
+TEST_F(CommandsTest, ParserInvalidInput) {
     std::istringstream input("x 1 y 2 z 3 k 4");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     
@@ -159,4 +159,67 @@ TEST_F(CommandsTest_PublicInterface, ParserInvalidInput) {
     
     EXPECT_EQ(cmd.size(), 1);
     EXPECT_TRUE(error_output.find("Unknown token") != std::string::npos);
+}
+
+TEST_F(CommandsTest, ParserHandlesMultipleLines) {
+    std::istringstream input("k 1 k 2\nm 3\nn 4 k 5");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 5);
+}
+
+TEST_F(CommandsTest, ParserHandlesNegativeNumbers) {
+    std::istringstream input("k -1 m -42 n -100");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 3);
+    EXPECT_EQ(cmd.get_command_values(0)[0], -1);
+    EXPECT_EQ(cmd.get_command_values(1)[0], -42);
+    EXPECT_EQ(cmd.get_command_values(2)[0], -100);
+}
+
+TEST_F(CommandsTest, ParserHandlesZero) {
+    std::istringstream input("k 0 m 0 n 0");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 3);
+    EXPECT_EQ(cmd.get_command_values(0)[0], 0);
+    EXPECT_EQ(cmd.get_command_values(1)[0], 0);
+    EXPECT_EQ(cmd.get_command_values(2)[0], 0);
+}
+
+TEST_F(CommandsTest, ParserHandlesLargeNumbers) {
+    std::istringstream input("k 999999 m 123456 n 789012");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 3);
+    EXPECT_EQ(cmd.get_command_values(0)[0], 999999);
+    EXPECT_EQ(cmd.get_command_values(1)[0], 123456);
+    EXPECT_EQ(cmd.get_command_values(2)[0], 789012);
+}
+
+TEST_F(CommandsTest, ParserOutputFormatConsistency) {
+    std::istringstream input("k 4 k3 k 2 m1 n 1");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    testing::internal::CaptureStdout();
+    cmd.print_commands();
+    std::string output = testing::internal::GetCapturedStdout();
+    
+    // Check consistent output format
+    EXPECT_TRUE(output.find("add [4]") != std::string::npos);
+    EXPECT_TRUE(output.find("add [3]") != std::string::npos);
+    EXPECT_TRUE(output.find("add [2]") != std::string::npos);
+    EXPECT_TRUE(output.find("find_min [1]") != std::string::npos);
+    EXPECT_TRUE(output.find("number_smaller [1]") != std::string::npos);
 }

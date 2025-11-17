@@ -6,14 +6,9 @@
 #include <sstream>
 #include <cctype>
 
-// Forward declaration for friend class
-class CommandsTest_PublicInterface;
-class CommandsTest_PrivateImplementation;
+
 
 class Commands {
-    // Make test classes friends to access private members
-    friend class CommandsTest_PublicInterface;
-    friend class CommandsTest_PrivateImplementation;
     
 public:
     enum class Command { add, find_min, number_smaller };
@@ -27,11 +22,11 @@ public:
     Command get_command_type(size_t index) const;
     
 private:
-    // Remove the CommandInstance constructor definition from here
     struct CommandInstance {
         Command cmd;
         std::vector<int> values;
-        CommandInstance(Command c, std::initializer_list<int> vals = {}); // Declaration only
+        CommandInstance(Command c, std::initializer_list<int> vals = {}) 
+            : cmd(c), values(vals) {}
     };
     
     std::vector<std::string> tokenize_input();
@@ -41,6 +36,5 @@ private:
     
     std::vector<CommandInstance> commandList;
     
-    // Add 'static' here
     static const std::unordered_map<Command, std::string> commandNames;
 };
