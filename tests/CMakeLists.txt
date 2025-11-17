@@ -1,17 +1,14 @@
 # Find GTest
 find_package(GTest REQUIRED)
 
-# Create test executable
-add_executable(CommandsTest 
-    test_commands.cpp
-)
+# Test executables
+add_executable(CommandsTest_Public test_commands_public.cpp)
+add_executable(CommandsTest_Private test_commands_private.cpp)
 
-# Link test executable with GTest and your library
-target_link_libraries(CommandsTest 
-    GTest::gtest 
-    GTest::gtest_main 
-    SearchingTreeLib
-)
+# Link with GTest and your library
+target_link_libraries(CommandsTest_Public GTest::gtest GTest::gtest_main SearchingTreeLib)
+target_link_libraries(CommandsTest_Private GTest::gtest GTest::gtest_main SearchingTreeLib)
 
-# Add test
-add_test(NAME CommandsTest COMMAND CommandsTest)
+# Add tests
+add_test(NAME CommandsTest_Public COMMAND CommandsTest_Public)
+add_test(NAME CommandsTest_Private COMMAND CommandsTest_Private)

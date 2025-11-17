@@ -1,7 +1,6 @@
-// Commands.cpp
 #include "Commands.hpp"
 
-
+// CommandInstance constructor definition - must be in the same translation unit
 Commands::CommandInstance::CommandInstance(Command c, std::initializer_list<int> vals) 
     : cmd(c), values(vals) {}
 
@@ -20,6 +19,10 @@ void Commands::print_commands() {
         }
         std::cout << std::endl;
     }
+}
+
+void Commands::add_command(Command cmd, std::initializer_list<int> values) {
+    commandList.emplace_back(cmd, values);
 }
 
 // Stage 1: Tokenize input
@@ -63,14 +66,12 @@ void Commands::parse_tokens(const std::vector<std::string>& tokens) {
                 std::string number_str = token.substr(1);
                 
                 Command cmd = char_to_command(cmd_char);
-                if (cmd != Command::add) { // Only add has valid mapping
-                    try {
-                        int value = std::stoi(number_str);
-                        add_command(cmd, {value});
-                        continue; // Successfully processed this token
-                    } catch (const std::exception& e) {
-                        std::cerr << "Invalid number in token: " << token << std::endl;
-                    }
+                try {
+                    int value = std::stoi(number_str);
+                    add_command(cmd, {value});
+                    continue; // Successfully processed this token
+                } catch (const std::exception& e) {
+                    std::cerr << "Invalid number in token: " << token << std::endl;
                 }
             }
         }
@@ -108,29 +109,24 @@ void Commands::parse_from_stdin() {
     parse_tokens(tokens);
 }
 
-
 // Clear all commands
 void Commands::clear() {
     commandList.clear();
 }
-    
+
 // Get number of commands (useful for testing)
 size_t Commands::size() const {
     return commandList.size();
 }
-    
+
 // Get command at index (for testing)
 const std::vector<int>& Commands::get_command_values(size_t index) const {
     return commandList[index].values;
 }
-    
+
 // Get command type at index (for testing)
 Commands::Command Commands::get_command_type(size_t index) const {
     return commandList[index].cmd;
-}
-
-void Commands::add_command(Command cmd, std::initializer_list<int> values) {
-    commandList.emplace_back(cmd, values);
 }
 
 // Helper function to convert character to Command
