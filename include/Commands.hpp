@@ -5,36 +5,26 @@
 #include <iostream>
 #include <sstream>
 #include <cctype>
-
-
+#include "CommandTypes.hpp"
 
 class Commands {
-    
 public:
-    enum class Command { add, find_min, number_smaller };
-
     void print_commands();
-    void add_command(Command cmd, std::initializer_list<int> values = {});
+    void add_command(TreeCommand cmd, std::vector<int> values = {});
     void parse_from_stdin();
     void clear();
     size_t size() const;
-    const std::vector<int>& get_command_values(size_t index) const;
-    Command get_command_type(size_t index) const;
+    
+    // Direct access to tree commands - no conversion needed!
+    const std::vector<TreeCommandInstance>& get_commands() const { return commandList; }
     
 private:
-    struct CommandInstance {
-        Command cmd;
-        std::vector<int> values;
-        CommandInstance(Command c, std::initializer_list<int> vals = {}) 
-            : cmd(c), values(vals) {}
-    };
-    
     std::vector<std::string> tokenize_input();
     void parse_tokens(const std::vector<std::string>& tokens);
-    Command char_to_command(char c);
+    TreeCommand char_to_command(char c);
     bool is_number(const std::string& s);
     
-    std::vector<CommandInstance> commandList;
+    std::vector<TreeCommandInstance> commandList;
     
-    static const std::unordered_map<Command, std::string> commandNames;
+    static const std::unordered_map<TreeCommand, std::string> commandNames;
 };

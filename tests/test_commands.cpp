@@ -19,30 +19,30 @@ TEST_F(CommandsTest, DefaultConstruction) {
 }
 
 TEST_F(CommandsTest, AddCommandNoValues) {
-    cmd.add_command(Commands::Command::add);
-    cmd.add_command(Commands::Command::find_min);
-    cmd.add_command(Commands::Command::number_smaller);
+    cmd.add_command(TreeCommand::add);
+    cmd.add_command(TreeCommand::find_min);
+    cmd.add_command(TreeCommand::number_smaller);
     SUCCEED();
 }
 
 TEST_F(CommandsTest, AddCommandSingleValue) {
-    cmd.add_command(Commands::Command::add, {42});
-    cmd.add_command(Commands::Command::find_min, {100});
-    cmd.add_command(Commands::Command::number_smaller, {7});
+    cmd.add_command(TreeCommand::add, {42});
+    cmd.add_command(TreeCommand::find_min, {100});
+    cmd.add_command(TreeCommand::number_smaller, {7});
     SUCCEED();
 }
 
 TEST_F(CommandsTest, AddCommandMultipleValues) {
-    cmd.add_command(Commands::Command::add, {10, 20});
-    cmd.add_command(Commands::Command::number_smaller, {1, 2, 3, 4, 5});
+    cmd.add_command(TreeCommand::add, {10, 20});
+    cmd.add_command(TreeCommand::number_smaller, {1, 2, 3, 4, 5});
     SUCCEED();
 }
 
 TEST_F(CommandsTest, AddMixedCommands) {
-    cmd.add_command(Commands::Command::add);
-    cmd.add_command(Commands::Command::find_min, {5});
-    cmd.add_command(Commands::Command::number_smaller, {1, 2, 3});
-    cmd.add_command(Commands::Command::add, {100, 200});
+    cmd.add_command(TreeCommand::add);
+    cmd.add_command(TreeCommand::find_min, {5});
+    cmd.add_command(TreeCommand::number_smaller, {1, 2, 3});
+    cmd.add_command(TreeCommand::add, {100, 200});
     SUCCEED();
 }
 
@@ -55,10 +55,10 @@ TEST_F(CommandsTest, PrintEmptyCommands) {
 }
 
 TEST_F(CommandsTest, PrintCommandsOutput) {
-    cmd.add_command(Commands::Command::add, {10, 20});
-    cmd.add_command(Commands::Command::find_min, {5});
-    cmd.add_command(Commands::Command::number_smaller);
-    cmd.add_command(Commands::Command::number_smaller, {1, 2, 3});
+    cmd.add_command(TreeCommand::add, {10, 20});
+    cmd.add_command(TreeCommand::find_min, {5});
+    cmd.add_command(TreeCommand::number_smaller);
+    cmd.add_command(TreeCommand::number_smaller, {1, 2, 3});
     
     testing::internal::CaptureStdout();
     cmd.print_commands();
@@ -73,10 +73,10 @@ TEST_F(CommandsTest, PrintCommandsOutput) {
 }
 
 TEST_F(CommandsTest, CommandOrderPreserved) {
-    cmd.add_command(Commands::Command::add, {1});
-    cmd.add_command(Commands::Command::find_min, {2});
-    cmd.add_command(Commands::Command::number_smaller, {3});
-    cmd.add_command(Commands::Command::add, {4});
+    cmd.add_command(TreeCommand::add, {1});
+    cmd.add_command(TreeCommand::find_min, {2});
+    cmd.add_command(TreeCommand::number_smaller, {3});
+    cmd.add_command(TreeCommand::add, {4});
     
     testing::internal::CaptureStdout();
     cmd.print_commands();
@@ -94,15 +94,28 @@ TEST_F(CommandsTest, CommandOrderPreserved) {
 
 // Edge cases
 TEST_F(CommandsTest, EdgeCaseValues) {
-    cmd.add_command(Commands::Command::add, {0});
-    cmd.add_command(Commands::Command::find_min, {-1});
-    cmd.add_command(Commands::Command::number_smaller, std::initializer_list<int>{INT_MAX});
-    cmd.add_command(Commands::Command::add, std::initializer_list<int>{INT_MIN});
+    cmd.add_command(TreeCommand::add, {0});
+    cmd.add_command(TreeCommand::find_min, {-1});
+    cmd.add_command(TreeCommand::number_smaller, {INT_MAX});
+    cmd.add_command(TreeCommand::add, {INT_MIN});
     
     testing::internal::CaptureStdout();
     cmd.print_commands();
     std::string output = testing::internal::GetCapturedStdout();
     SUCCEED();
+}
+
+// NEW: Test direct command access
+TEST_F(CommandsTest, GetCommandsAccess) {
+    cmd.add_command(TreeCommand::add, {42});
+    cmd.add_command(TreeCommand::find_min);
+    
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands.size(), 2);
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values[0], 42);
+    EXPECT_EQ(commands[1].cmd, TreeCommand::find_min);
+    EXPECT_TRUE(commands[1].values.empty());
 }
 
 // Parser tests through public interface
@@ -113,8 +126,9 @@ TEST_F(CommandsTest, ParserValidFormattedInput) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 5);
-    EXPECT_EQ(cmd.get_command_type(0), Commands::Command::add);
-    EXPECT_EQ(cmd.get_command_values(0)[0], 4);
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values[0], 4);
 }
 
 TEST_F(CommandsTest, ParserAttachedNumbers) {
@@ -124,8 +138,9 @@ TEST_F(CommandsTest, ParserAttachedNumbers) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 5);
-    EXPECT_EQ(cmd.get_command_type(0), Commands::Command::add);
-    EXPECT_EQ(cmd.get_command_values(0)[0], 4);
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values[0], 4);
 }
 
 TEST_F(CommandsTest, ParserMixedFormat) {
@@ -144,8 +159,9 @@ TEST_F(CommandsTest, ParserCommandsWithoutValues) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 4);
-    EXPECT_TRUE(cmd.get_command_values(0).empty());
-    EXPECT_EQ(cmd.get_command_values(3)[0], 5);
+    const auto& commands = cmd.get_commands();
+    EXPECT_TRUE(commands[0].values.empty());
+    EXPECT_EQ(commands[3].values[0], 5);
 }
 
 TEST_F(CommandsTest, ParserInvalidInput) {
@@ -177,9 +193,10 @@ TEST_F(CommandsTest, ParserHandlesNegativeNumbers) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 3);
-    EXPECT_EQ(cmd.get_command_values(0)[0], -1);
-    EXPECT_EQ(cmd.get_command_values(1)[0], -42);
-    EXPECT_EQ(cmd.get_command_values(2)[0], -100);
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands[0].values[0], -1);
+    EXPECT_EQ(commands[1].values[0], -42);
+    EXPECT_EQ(commands[2].values[0], -100);
 }
 
 TEST_F(CommandsTest, ParserHandlesZero) {
@@ -189,9 +206,10 @@ TEST_F(CommandsTest, ParserHandlesZero) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 3);
-    EXPECT_EQ(cmd.get_command_values(0)[0], 0);
-    EXPECT_EQ(cmd.get_command_values(1)[0], 0);
-    EXPECT_EQ(cmd.get_command_values(2)[0], 0);
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands[0].values[0], 0);
+    EXPECT_EQ(commands[1].values[0], 0);
+    EXPECT_EQ(commands[2].values[0], 0);
 }
 
 TEST_F(CommandsTest, ParserHandlesLargeNumbers) {
@@ -201,9 +219,10 @@ TEST_F(CommandsTest, ParserHandlesLargeNumbers) {
     std::cin.rdbuf(old_cin_buf);
     
     EXPECT_EQ(cmd.size(), 3);
-    EXPECT_EQ(cmd.get_command_values(0)[0], 999999);
-    EXPECT_EQ(cmd.get_command_values(1)[0], 123456);
-    EXPECT_EQ(cmd.get_command_values(2)[0], 789012);
+    const auto& commands = cmd.get_commands();
+    EXPECT_EQ(commands[0].values[0], 999999);
+    EXPECT_EQ(commands[1].values[0], 123456);
+    EXPECT_EQ(commands[2].values[0], 789012);
 }
 
 TEST_F(CommandsTest, ParserOutputFormatConsistency) {
@@ -222,4 +241,17 @@ TEST_F(CommandsTest, ParserOutputFormatConsistency) {
     EXPECT_TRUE(output.find("add [2]") != std::string::npos);
     EXPECT_TRUE(output.find("find_min [1]") != std::string::npos);
     EXPECT_TRUE(output.find("number_smaller [1]") != std::string::npos);
+}
+
+// Test clear functionality
+TEST_F(CommandsTest, ClearCommands) {
+    cmd.add_command(TreeCommand::add, {1});
+    cmd.add_command(TreeCommand::find_min, {2});
+    EXPECT_EQ(cmd.size(), 2);
+    
+    cmd.clear();
+    EXPECT_EQ(cmd.size(), 0);
+    
+    const auto& commands = cmd.get_commands();
+    EXPECT_TRUE(commands.empty());
 }
