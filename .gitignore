@@ -1,19 +1,109 @@
-CMakeLists.txt.user
+# Build directories
+build/
+*/build/
+*/*/build/
+*out/
+bin/
+lib/
+binaries/
+
+# CMake generated files
 CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-Makefile
+CMakeFiles/
 cmake_install.cmake
 install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
-CMakeUserPresets.json
+Makefile
+*.cmake
+!CMakeLists.txt
+!.cmake-format.yaml
+CMakeDoxyfile.in
+CMakeDoxygenDefaults.cmake
 
-# CLion
-#  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
-#  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
-#  and can be added to the global gitignore or merged into this file.  For a more nuclear
-#  option (not recommended) you can uncomment the following to ignore the entire idea folder.
-#cmake-build-*
+# Compiler outputs
+# Object files
+*.o
+*.obj
+*.ko
+
+# Precompiled headers
+*.gch
+*.pch
+
+# Libraries
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+
+# Executables
+*.exe
+*.out
+*.app
+
+# Debug files
+*.pdb
+*.idb
+*.ilk
+*.dmp
+
+# Dependency files
+*.d
+*.d.*
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.user
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+
+# Documentation
+docs/html/
+docs/latex/
+doxygen/
+
+# Package managers
+conaninfo.txt
+conanbuildinfo.*
+conan.lock
+conandata.yml
+vcpkg_installed/
+
+# Testing
+CTestTestfile.cmake
+Testing/
+test-results/
+
+# Coverage reports
+*.gcda
+*.gcno
+*.gcov
+coverage/
+
+# Profiling
+*.prof
+gmon.out
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Backup files
+*~
+*.bak
+*.backup
+
+# Logs
+*.log
