@@ -5,13 +5,15 @@ int main(){
     
     Commands cmd;
     
-    // Add some commands with different numbers of parameters
-    cmd.add_command(Commands::Command::add, {10, 20});
-    cmd.add_command(Commands::Command::find_min, {5});
-    cmd.add_command(Commands::Command::number_smaller, {1, 2, 3, 4});
-    cmd.add_command(Commands::Command::add); // No parameters
+    std::cout << "Enter commands (k=add, m=find_min, n=number_smaller):" << std::endl;
+    std::cout << "Example: k 4 k 3 k 2 m 1 n 1" << std::endl;
+    std::cout << "Press Ctrl+D (Linux/Mac) or Ctrl+Z (Windows) to finish input" << std::endl;
     
-    // Print all commands
+    // Parse from standard input
+    cmd.parse_from_stdin();
+    
+    // Print parsed commands
+    std::cout << "\nParsed commands:" << std::endl;
     cmd.print_commands();
     
     return 0;
