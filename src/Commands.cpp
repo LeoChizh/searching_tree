@@ -4,7 +4,7 @@ void Commands::print_commands() {
     for (const auto& instance : commandList) {
         std::cout << commandNames.at(instance.cmd);
         
-        // Always print brackets, even if empty - you said this is fine!
+        // Always print brackets, even if empty
         std::cout << " [";
         std::string separator = "";
         for (const auto& value : instance.values) {
@@ -37,14 +37,23 @@ std::vector<std::string> Commands::tokenize_input() {
     
     return tokens;
 }
-// Stage 2 parse tokens
+
+// Stage 2: Parse tokens with consistent error handling
 void Commands::parse_tokens(const std::vector<std::string>& tokens) {
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         
-        // Only handle standalone commands
+        // Handle valid commands
         if (token == "k" || token == "m" || token == "n") {
-            TreeCommand cmd = char_to_command(token[0]);
+            TreeCommand cmd;
+            if (token == "k") {
+                cmd = TreeCommand::add;
+            } else if (token == "m") {
+                cmd = TreeCommand::find_min;
+            } else if (token == "n") {
+                cmd = TreeCommand::number_smaller;
+            }
+            
             std::vector<int> values;
             
             // Collect consecutive numbers after the command
@@ -54,10 +63,20 @@ void Commands::parse_tokens(const std::vector<std::string>& tokens) {
                 j++;
             }
             
-            if (!values.empty()) i = j - 1;
+            // Add the command with its values
             add_command(cmd, values);
+            
+            // Update index to skip processed values
+            if (j > i + 1) {
+                i = j - 1;
+            }
+            
+        } else if (is_number(token)) {
+            // Number without preceding command - report error but continue
+            std::cerr << "Error: Number without preceding command: " << token << std::endl;
         } else {
-            std::cerr << "Unknown token: " << token << std::endl;
+            // Unknown token - report error but continue
+            std::cerr << "Error: Unknown token: " << token << std::endl;
         }
     }
 }
@@ -73,21 +92,9 @@ void Commands::clear() {
     commandList.clear();
 }
 
-// Get number of commands (useful for testing)
+// Get number of commands
 size_t Commands::size() const {
     return commandList.size();
-}
-
-
-// Helper function to convert character to Command
-TreeCommand Commands::char_to_command(char c) {
-    switch (c) {
-        case 'k': return TreeCommand::add;
-        case 'm': return TreeCommand::find_min;
-        case 'n': return TreeCommand::number_smaller;
-        default: 
-            throw std::invalid_argument("Unknown command character: " + std::string(1, c));
-    }
 }
 
 // Helper function to check if string is a number

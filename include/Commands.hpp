@@ -21,10 +21,7 @@ public:
 private:
     std::vector<std::string> tokenize_input();
     void parse_tokens(const std::vector<std::string>& tokens);
-    TreeCommand char_to_command(char c);
     bool is_number(const std::string& s);
-    
     std::vector<TreeCommandInstance> commandList;
-    
     static const std::unordered_map<TreeCommand, std::string> commandNames;
 };
