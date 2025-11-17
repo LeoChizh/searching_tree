@@ -184,6 +184,67 @@ TEST_F(CommandsTest, EmptyInitializerList) {
     EXPECT_TRUE(output.find("[") == std::string::npos); // No brackets for empty values
 }
 
+// Test tokenization stage
+TEST_F(CommandsTest, TokenizeInput) {
+    std::istringstream input("k 4 k3 k 2 m1 n 1");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    
+    std::vector<std::string> tokens = cmd.tokenize_input();
+    
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(tokens.size(), 6);
+    EXPECT_EQ(tokens[0], "k");
+    EXPECT_EQ(tokens[1], "4");
+    EXPECT_EQ(tokens[2], "k3");
+    EXPECT_EQ(tokens[3], "k");
+    EXPECT_EQ(tokens[4], "2");
+    EXPECT_EQ(tokens[5], "m1");
+    // Note: "n 1" would be on next line in real input
+}
+
+// Test parsing tokens
+TEST_F(CommandsTest, ParseTokens) {
+    std::vector<std::string> tokens = {"k", "4", "k3", "m", "1", "n1"};
+    
+    cmd.parse_tokens(tokens);
+    
+    EXPECT_EQ(cmd.size(), 4);
+    if (cmd.size() >= 4) {
+        EXPECT_EQ(cmd.get_command_type(0), Commands::Command::add);
+        EXPECT_EQ(cmd.get_command_values(0)[0], 4);
+        EXPECT_EQ(cmd.get_command_type(1), Commands::Command::add);
+        EXPECT_EQ(cmd.get_command_values(1)[0], 3);
+        EXPECT_EQ(cmd.get_command_type(2), Commands::Command::find_min);
+        EXPECT_EQ(cmd.get_command_values(2)[0], 1);
+        EXPECT_EQ(cmd.get_command_type(3), Commands::Command::number_smaller);
+        EXPECT_EQ(cmd.get_command_values(3)[0], 1);
+    }
+}
+
+// Test full pipeline
+TEST_F(CommandsTest, FullParserPipeline) {
+    std::istringstream input("k 4 k3 m 1 n1");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    
+    cmd.parse_from_stdin();
+    
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 4);
+}
+
+// Test helper functions
+TEST_F(CommandsTest, HelperFunctions) {
+    // Test is_number
+    EXPECT_TRUE(cmd.is_number("123"));
+    EXPECT_TRUE(cmd.is_number("-456"));
+    EXPECT_FALSE(cmd.is_number("abc"));
+    EXPECT_FALSE(cmd.is_number("1a2"));
+    EXPECT_FALSE(cmd.is_number("-"));
+    EXPECT_FALSE(cmd.is_number(""));
+}
+
 // Test parser with properly formatted input
 TEST_F(CommandsTest, ParserValidFormattedInput) {
     std::istringstream input("k 4 k 3 k 2 m 1 n 1");

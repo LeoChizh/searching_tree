@@ -22,9 +22,11 @@ void Commands::print_commands() {
     }
 }
 
-// Fixed parser: handles "k 4 k3 k 2" format correctly
-void Commands::parse_from_stdin() {
+// Stage 1: Tokenize input
+std::vector<std::string> Commands::tokenize_input() {
+    std::vector<std::string> tokens;
     std::string line;
+    
     while (std::getline(std::cin, line)) {
         if (line.empty()) continue;
         
@@ -32,106 +34,81 @@ void Commands::parse_from_stdin() {
         std::string token;
         
         while (iss >> token) {
-            // Check if token starts with a command character
-            if (token.length() >= 1 && (token[0] == 'k' || token[0] == 'm' || token[0] == 'n')) {
-                Command cmd;
-                
-                switch (token[0]) {
-                    case 'k': cmd = Command::add; break;
-                    case 'm': cmd = Command::find_min; break;
-                    case 'n': cmd = Command::number_smaller; break;
-                    default: continue; // Should never happen
+            tokens.push_back(token);
+        }
+    }
+    
+    return tokens;
+}
+
+// Stage 2: Parse tokens into commands
+void Commands::parse_tokens(const std::vector<std::string>& tokens) {
+    for (size_t i = 0; i < tokens.size(); ++i) {
+        const std::string& token = tokens[i];
+        
+        // Check for command with attached number (like "k4")
+        if (token.length() > 1 && (token[0] == 'k' || token[0] == 'm' || token[0] == 'n')) {
+            // Check if the rest is a valid number
+            bool is_attached_number = true;
+            for (size_t j = 1; j < token.length(); ++j) {
+                if (!std::isdigit(token[j]) && !(j == 1 && token[j] == '-')) {
+                    is_attached_number = false;
+                    break;
                 }
-                
-                // Check if there's a number attached to the command (like "k3")
-                std::vector<int> values;
-                
-                if (token.length() > 1) {
-                    // Try to parse the rest as a number
-                    std::string number_part = token.substr(1);
-                    try {
-                        int value = std::stoi(number_part);
-                        values.push_back(value);
-                    } catch (const std::exception& e) {
-                        // If it's not a valid number, ignore it
-                    }
-                } else {
-                    // Command without attached number, try to read next token as number
-                    if (iss.peek() != EOF && std::isdigit(iss.peek())) {
-                        int value;
-                        if (iss >> value) {
-                            values.push_back(value);
-                        }
-                    }
-                }
-                
-                // Add the command
-                if (!values.empty()) {
-                    add_command(cmd, {values[0]});
-                } else {
-                    add_command(cmd);
-                }
-            } else {
-                std::cerr << "Unknown command: " << token << std::endl;
             }
+            
+            if (is_attached_number) {
+                // Parse command with attached number
+                char cmd_char = token[0];
+                std::string number_str = token.substr(1);
+                
+                Command cmd = char_to_command(cmd_char);
+                if (cmd != Command::add) { // Only add has valid mapping
+                    try {
+                        int value = std::stoi(number_str);
+                        add_command(cmd, {value});
+                        continue; // Successfully processed this token
+                    } catch (const std::exception& e) {
+                        std::cerr << "Invalid number in token: " << token << std::endl;
+                    }
+                }
+            }
+        }
+        
+        // Handle standalone commands
+        if (token == "k" || token == "m" || token == "n") {
+            Command cmd = char_to_command(token[0]);
+            
+            // Check if next token is a number
+            if (i + 1 < tokens.size()) {
+                const std::string& next_token = tokens[i + 1];
+                if (is_number(next_token)) {
+                    try {
+                        int value = std::stoi(next_token);
+                        add_command(cmd, {value});
+                        i++; // Skip the number token since we used it
+                        continue;
+                    } catch (const std::exception& e) {
+                        std::cerr << "Invalid number: " << next_token << std::endl;
+                    }
+                }
+            }
+            
+            // No number provided, add command without value
+            add_command(cmd);
+        } else {
+            std::cerr << "Unknown token: " << token << std::endl;
         }
     }
 }
 
-// Alternative: Even simpler and more robust parser
-void Commands::parse_commands_robust() {
-    std::string line;
-    while (std::getline(std::cin, line)) {
-        if (line.empty()) continue;
-        
-        for (size_t i = 0; i < line.length(); ++i) {
-            char c = line[i];
-            if (c == 'k' || c == 'm' || c == 'n') {
-                Commands::Command cmd;
-                switch (c) {
-                    case 'k': cmd = Command::add; break;
-                    case 'm': cmd = Command::find_min; break;
-                    case 'n': cmd = Command::number_smaller; break;
-                    default: continue;
-                }
-                
-                // Look for numbers after the command
-                std::vector<int> values;
-                size_t j = i + 1;
-                
-                // Skip whitespace
-                while (j < line.length() && std::isspace(line[j])) {
-                    j++;
-                }
-                
-                // Parse number if present
-                if (j < line.length() && std::isdigit(line[j])) {
-                    std::string number_str;
-                    while (j < line.length() && (std::isdigit(line[j]) || line[j] == '-')) {
-                        number_str += line[j];
-                        j++;
-                    }
-                    try {
-                        int value = std::stoi(number_str);
-                        values.push_back(value);
-                    } catch (const std::exception& e) {
-                        // Ignore invalid numbers
-                    }
-                }
-                
-                // Add the command
-                if (!values.empty()) {
-                    Commands::add_command(cmd, {values[0]});
-                } else {
-                    add_command(cmd);
-                }
-                
-                i = j - 1; // Continue from after the number
-            }
-        }
-    }
+// Combined method for easy use
+void Commands::parse_from_stdin() {
+    std::vector<std::string> tokens = tokenize_input();
+    parse_tokens(tokens);
 }
-    
+
+
 // Clear all commands
 void Commands::clear() {
     commandList.clear();
@@ -154,6 +131,33 @@ Commands::Command Commands::get_command_type(size_t index) const {
 
 void Commands::add_command(Command cmd, std::initializer_list<int> values) {
     commandList.emplace_back(cmd, values);
+}
+
+// Helper function to convert character to Command
+Commands::Command Commands::char_to_command(char c) {
+    switch (c) {
+        case 'k': return Command::add;
+        case 'm': return Command::find_min;
+        case 'n': return Command::number_smaller;
+        default: return Command::add; // Should not happen with validation
+    }
+}
+
+// Helper function to check if string is a number
+bool Commands::is_number(const std::string& s) {
+    if (s.empty()) return false;
+    
+    size_t start = 0;
+    if (s[0] == '-') {
+        if (s.length() == 1) return false; // Just "-" is not a number
+        start = 1;
+    }
+    
+    for (size_t i = start; i < s.length(); ++i) {
+        if (!std::isdigit(s[i])) return false;
+    }
+    
+    return true;
 }
 
 // Static member definition
