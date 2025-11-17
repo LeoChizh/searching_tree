@@ -38,8 +38,9 @@ std::vector<std::string> Commands::tokenize_input() {
     return tokens;
 }
 
-// Stage 2: Parse tokens with consistent error handling
-void Commands::parse_tokens(const std::vector<std::string>& tokens) {
+// Returns total number of errors encountered
+int Commands::parse_tokens(const std::vector<std::string>& tokens) {
+    int errors_count = 0;
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         
@@ -73,18 +74,21 @@ void Commands::parse_tokens(const std::vector<std::string>& tokens) {
             
         } else if (is_number(token)) {
             // Number without preceding command - report error but continue
+            errors_count++;
             std::cerr << "Error: Number without preceding command: " << token << std::endl;
         } else {
             // Unknown token - report error but continue
+            errors_count++;
             std::cerr << "Error: Unknown token: " << token << std::endl;
         }
     }
+    return errors_count;
 }
 
 // Combined method for easy use
-void Commands::parse_from_stdin() {
+int Commands::parse_from_stdin() {
     std::vector<std::string> tokens = tokenize_input();
-    parse_tokens(tokens);
+    return parse_tokens(tokens);
 }
 
 // Clear all commands
