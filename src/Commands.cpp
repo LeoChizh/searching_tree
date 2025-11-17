@@ -37,44 +37,17 @@ std::vector<std::string> Commands::tokenize_input() {
     
     return tokens;
 }
-
+// Stage 2 parse tokens
 void Commands::parse_tokens(const std::vector<std::string>& tokens) {
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         
-        // Check for command with attached number (like "k4")
-        if (token.length() > 1 && (token[0] == 'k' || token[0] == 'm' || token[0] == 'n')) {
-            // Check if the rest is a valid number
-            bool is_attached_number = true;
-            for (size_t j = 1; j < token.length(); ++j) {
-                if (!std::isdigit(token[j]) && !(j == 1 && token[j] == '-')) {
-                    is_attached_number = false;
-                    break;
-                }
-            }
-            
-            if (is_attached_number) {
-                // Parse command with attached number
-                char cmd_char = token[0];
-                std::string number_str = token.substr(1);
-                
-                TreeCommand cmd = char_to_command(cmd_char);
-                try {
-                    int value = std::stoi(number_str);
-                    add_command(cmd, {value});  // This works - {value} creates vector
-                    continue; // Successfully processed this token
-                } catch (const std::exception& e) {
-                    std::cerr << "Invalid number in token: " << token << std::endl;
-                }
-            }
-        }
-        
-        // Handle standalone commands
+        // Only handle standalone commands
         if (token == "k" || token == "m" || token == "n") {
             TreeCommand cmd = char_to_command(token[0]);
-            
-            // Build values vector
             std::vector<int> values;
+            
+            // Collect consecutive numbers after the command
             size_t j = i + 1;
             while (j < tokens.size() && is_number(tokens[j])) {
                 values.push_back(std::stoi(tokens[j]));
@@ -82,9 +55,7 @@ void Commands::parse_tokens(const std::vector<std::string>& tokens) {
             }
             
             if (!values.empty()) i = j - 1;
-            
-            // SIMPLE: Just pass the vector directly
-            add_command(cmd, values);  // No conversion needed!
+            add_command(cmd, values);
         } else {
             std::cerr << "Unknown token: " << token << std::endl;
         }

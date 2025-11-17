@@ -131,26 +131,7 @@ TEST_F(CommandsTest, ParserValidFormattedInput) {
     EXPECT_EQ(commands[0].values[0], 4);
 }
 
-TEST_F(CommandsTest, ParserAttachedNumbers) {
-    std::istringstream input("k4 k3 k2 m1 n1");
-    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
-    cmd.parse_from_stdin();
-    std::cin.rdbuf(old_cin_buf);
-    
-    EXPECT_EQ(cmd.size(), 5);
-    const auto& commands = cmd.get_commands();
-    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
-    EXPECT_EQ(commands[0].values[0], 4);
-}
-
-TEST_F(CommandsTest, ParserMixedFormat) {
-    std::istringstream input("k 4 k3 k 2 m1 n 1");
-    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
-    cmd.parse_from_stdin();
-    std::cin.rdbuf(old_cin_buf);
-    
-    EXPECT_EQ(cmd.size(), 5);
-}
+// REMOVED: ParserAttachedNumbers test (k4, m1, n1 are now invalid)
 
 TEST_F(CommandsTest, ParserCommandsWithoutValues) {
     std::istringstream input("k m n k 5");
@@ -225,8 +206,9 @@ TEST_F(CommandsTest, ParserHandlesLargeNumbers) {
     EXPECT_EQ(commands[2].values[0], 789012);
 }
 
+// UPDATED: Remove mixed format test that included attached commands
 TEST_F(CommandsTest, ParserOutputFormatConsistency) {
-    std::istringstream input("k 4 k3 k 2 m1 n 1");
+    std::istringstream input("k 4 k 3 k 2 m 1 n 1");
     auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
     cmd.parse_from_stdin();
     std::cin.rdbuf(old_cin_buf);
@@ -254,4 +236,161 @@ TEST_F(CommandsTest, ClearCommands) {
     
     const auto& commands = cmd.get_commands();
     EXPECT_TRUE(commands.empty());
+}
+
+// Tests for multiple values functionality
+TEST_F(CommandsTest, ParserHandlesMultipleValues) {
+    std::istringstream input("k 4 3 2 m 1 n 5 6");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 3);
+    const auto& commands = cmd.get_commands();
+    
+    // First command: k 4 3 2 → add with values [4, 3, 2]
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values.size(), 3);
+    EXPECT_EQ(commands[0].values[0], 4);
+    EXPECT_EQ(commands[0].values[1], 3);
+    EXPECT_EQ(commands[0].values[2], 2);
+    
+    // Second command: m 1 → find_min with value [1]
+    EXPECT_EQ(commands[1].cmd, TreeCommand::find_min);
+    EXPECT_EQ(commands[1].values.size(), 1);
+    EXPECT_EQ(commands[1].values[0], 1);
+    
+    // Third command: n 5 6 → number_smaller with values [5, 6]
+    EXPECT_EQ(commands[2].cmd, TreeCommand::number_smaller);
+    EXPECT_EQ(commands[2].values.size(), 2);
+    EXPECT_EQ(commands[2].values[0], 5);
+    EXPECT_EQ(commands[2].values[1], 6);
+}
+
+TEST_F(CommandsTest, ParserHandlesMixedSingleAndMultipleValues) {
+    std::istringstream input("k 1 k 2 3 m n 4 5 6");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    EXPECT_EQ(cmd.size(), 4);
+    const auto& commands = cmd.get_commands();
+    
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values.size(), 1);
+    EXPECT_EQ(commands[0].values[0], 1);
+    
+    EXPECT_EQ(commands[1].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[1].values.size(), 2);
+    EXPECT_EQ(commands[1].values[0], 2);
+    EXPECT_EQ(commands[1].values[1], 3);
+    
+    EXPECT_EQ(commands[2].cmd, TreeCommand::find_min);
+    EXPECT_EQ(commands[2].values.size(), 0);
+    
+    EXPECT_EQ(commands[3].cmd, TreeCommand::number_smaller);
+    EXPECT_EQ(commands[3].values.size(), 3);
+    EXPECT_EQ(commands[3].values[0], 4);
+    EXPECT_EQ(commands[3].values[1], 5);
+    EXPECT_EQ(commands[3].values[2], 6);
+}
+
+TEST_F(CommandsTest, ParserHandlesMultipleValuesWithNegativeNumbers) {
+    std::istringstream input("k 1 -2 3 m -4 -5");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    const auto& commands = cmd.get_commands();
+    
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values.size(), 3);
+    EXPECT_EQ(commands[0].values[0], 1);
+    EXPECT_EQ(commands[0].values[1], -2);
+    EXPECT_EQ(commands[0].values[2], 3);
+    
+    EXPECT_EQ(commands[1].cmd, TreeCommand::find_min);
+    EXPECT_EQ(commands[1].values.size(), 2);
+    EXPECT_EQ(commands[1].values[0], -4);
+    EXPECT_EQ(commands[1].values[1], -5);
+}
+
+// NEW: Test that attached formats are rejected
+TEST_F(CommandsTest, ParserRejectsAttachedFormats) {
+    std::istringstream input("k4 m1 n5");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    
+    testing::internal::CaptureStderr();
+    cmd.parse_from_stdin();
+    std::string error_output = testing::internal::GetCapturedStderr();
+    std::cin.rdbuf(old_cin_buf);
+    
+    // Should have errors for all attached formats
+    EXPECT_TRUE(error_output.find("Unknown token: k4") != std::string::npos);
+    EXPECT_TRUE(error_output.find("Unknown token: m1") != std::string::npos);
+    EXPECT_TRUE(error_output.find("Unknown token: n5") != std::string::npos);
+    
+    // No commands should be parsed
+    EXPECT_EQ(cmd.size(), 0);
+}
+
+TEST_F(CommandsTest, ParserHandlesManyValues) {
+    std::istringstream input("k 1 2 3 4 5 6 7 8 9 10");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    const auto& commands = cmd.get_commands();
+    
+    EXPECT_EQ(commands[0].cmd, TreeCommand::add);
+    EXPECT_EQ(commands[0].values.size(), 10);
+    for (int i = 0; i < 10; ++i) {
+        EXPECT_EQ(commands[0].values[i], i + 1);
+    }
+}
+
+TEST_F(CommandsTest, PrintCommandsWithMultipleValues) {
+    cmd.add_command(TreeCommand::add, {1, 2, 3});
+    cmd.add_command(TreeCommand::find_min, {4, 5});
+    cmd.add_command(TreeCommand::number_smaller, {6, 7, 8, 9});
+    
+    testing::internal::CaptureStdout();
+    cmd.print_commands();
+    std::string output = testing::internal::GetCapturedStdout();
+    
+    EXPECT_TRUE(output.find("add [1, 2, 3]") != std::string::npos);
+    EXPECT_TRUE(output.find("find_min [4, 5]") != std::string::npos);
+    EXPECT_TRUE(output.find("number_smaller [6, 7, 8, 9]") != std::string::npos);
+}
+
+TEST_F(CommandsTest, PrintCommandsWithEmptyValues) {
+    cmd.add_command(TreeCommand::add, {});
+    cmd.add_command(TreeCommand::find_min, {});
+    cmd.add_command(TreeCommand::number_smaller, {});
+    
+    testing::internal::CaptureStdout();
+    cmd.print_commands();
+    std::string output = testing::internal::GetCapturedStdout();
+    
+    EXPECT_TRUE(output.find("add []") != std::string::npos);
+    EXPECT_TRUE(output.find("find_min []") != std::string::npos);
+    EXPECT_TRUE(output.find("number_smaller []") != std::string::npos);
+}
+
+TEST_F(CommandsTest, ValuesAreImmutableAfterParsing) {
+    std::istringstream input("k 1 2 3");
+    auto old_cin_buf = std::cin.rdbuf(input.rdbuf());
+    cmd.parse_from_stdin();
+    std::cin.rdbuf(old_cin_buf);
+    
+    const auto& commands = cmd.get_commands();
+    
+    // Verify values are stored correctly and cannot be modified
+    EXPECT_EQ(commands[0].values.size(), 3);
+    EXPECT_EQ(commands[0].values[0], 1);
+    EXPECT_EQ(commands[0].values[1], 2);
+    EXPECT_EQ(commands[0].values[2], 3);
+    
+    // The const qualifier ensures immutability at compile time
+    SUCCEED();
 }
