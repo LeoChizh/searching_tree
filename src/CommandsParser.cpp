@@ -38,7 +38,8 @@ std::vector<std::string> CommandsParser::tokenize_input() {
     return tokens;
 }
 // Stage 2 parse tokens
-void CommandsParser::parse_tokens(const std::vector<std::string>& tokens) {
+int CommandsParser::parse_tokens(const std::vector<std::string>& tokens) {
+    int errors_count = 0;
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         
@@ -84,7 +85,7 @@ void CommandsParser::parse_tokens(const std::vector<std::string>& tokens) {
 }
 
 // Combined method for easy use
-void CommandsParser::parse_from_stdin() {
+int CommandsParser::parse_from_stdin() {
     std::vector<std::string> tokens = tokenize_input();
     return parse_tokens(tokens);
 }
@@ -100,16 +101,6 @@ size_t CommandsParser::size() const {
 }
 
 
-// Helper function to convert character to Command
-TreeCommand CommandsParser::char_to_command(char c) {
-    switch (c) {
-        case 'k': return TreeCommand::add;
-        case 'm': return TreeCommand::find_min;
-        case 'n': return TreeCommand::number_smaller;
-        default: 
-            throw std::invalid_argument("Unknown command character: " + std::string(1, c));
-    }
-}
 
 // Helper function to check if string is a number
 bool CommandsParser::is_number(const std::string& s) {
