@@ -10,10 +10,10 @@ int main(){
     std::cout << "Press Ctrl+D (Linux/Mac) or Ctrl+Z (Windows) to finish input" << std::endl;
     
     // Parse from standard input
-    cmd.parse_from_stdin();
+    error_count = cmd.parse_from_stdin();
     
     // Print parsed commands
-    std::cout << "\nParsed commands:" << std::endl;
+    std::cout << "\nParsed commands with " << error_count << " error(s):" << std::endl;
     cmd.print_commands();
     
     return 0;
