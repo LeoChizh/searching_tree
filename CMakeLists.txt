@@ -12,7 +12,7 @@ endif()
 
 # Create a library for your core functionality
 add_library(SearchingTreeLib
-    src/Commands.cpp
+    src/CommandsParser.cpp
 )
 
 # Target include directories

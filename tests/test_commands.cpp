@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "Commands.hpp"
+#include "CommandsParser.hpp"
 #include <climits>
 #include <algorithm>
 #include <sstream>
@@ -10,7 +10,7 @@ protected:
     void SetUp() override {}
     void TearDown() override {}
 
-    Commands cmd;
+    CommandsParser cmd;
 };
 
 // Basic functionality tests

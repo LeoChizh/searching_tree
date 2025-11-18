@@ -7,7 +7,7 @@
 #include <cctype>
 #include "CommandTypes.hpp"
 
-class Commands {
+class CommandsParser {
 public:
     void print_commands();
     void add_command(TreeCommand cmd, std::vector<int> values = {});

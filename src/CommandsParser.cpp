@@ -1,6 +1,6 @@
-#include "Commands.hpp"
+#include "CommandsParser.hpp"
 
-void Commands::print_commands() {
+void CommandsParser::print_commands() {
     for (const auto& instance : commandList) {
         std::cout << commandNames.at(instance.cmd);
         
@@ -15,12 +15,12 @@ void Commands::print_commands() {
     }
 }
 
-void Commands::add_command(TreeCommand cmd, std::vector<int> values) {
+void CommandsParser::add_command(TreeCommand cmd, std::vector<int> values) {
     commandList.emplace_back(cmd, values);
 }
 
 // Stage 1: Tokenize input
-std::vector<std::string> Commands::tokenize_input() {
+std::vector<std::string> CommandsParser::tokenize_input() {
     std::vector<std::string> tokens;
     std::string line;
     
@@ -38,7 +38,7 @@ std::vector<std::string> Commands::tokenize_input() {
     return tokens;
 }
 // Stage 2 parse tokens
-void Commands::parse_tokens(const std::vector<std::string>& tokens) {
+void CommandsParser::parse_tokens(const std::vector<std::string>& tokens) {
     for (size_t i = 0; i < tokens.size(); ++i) {
         const std::string& token = tokens[i];
         
@@ -63,24 +63,24 @@ void Commands::parse_tokens(const std::vector<std::string>& tokens) {
 }
 
 // Combined method for easy use
-void Commands::parse_from_stdin() {
+void CommandsParser::parse_from_stdin() {
     std::vector<std::string> tokens = tokenize_input();
     parse_tokens(tokens);
 }
 
 // Clear all commands
-void Commands::clear() {
+void CommandsParser::clear() {
     commandList.clear();
 }
 
 // Get number of commands (useful for testing)
-size_t Commands::size() const {
+size_t CommandsParser::size() const {
     return commandList.size();
 }
 
 
 // Helper function to convert character to Command
-TreeCommand Commands::char_to_command(char c) {
+TreeCommand CommandsParser::char_to_command(char c) {
     switch (c) {
         case 'k': return TreeCommand::add;
         case 'm': return TreeCommand::find_min;
@@ -91,7 +91,7 @@ TreeCommand Commands::char_to_command(char c) {
 }
 
 // Helper function to check if string is a number
-bool Commands::is_number(const std::string& s) {
+bool CommandsParser::is_number(const std::string& s) {
     if (s.empty()) return false;
     
     size_t start = 0;
@@ -108,7 +108,7 @@ bool Commands::is_number(const std::string& s) {
 }
 
 // Static member definition
-const std::unordered_map<TreeCommand, std::string> Commands::commandNames = {
+const std::unordered_map<TreeCommand, std::string> CommandsParser::commandNames = {
     {TreeCommand::add, "add"},
     {TreeCommand::find_min, "find_min"},
     {TreeCommand::number_smaller, "number_smaller"}

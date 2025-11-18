@@ -1,9 +1,9 @@
 #include <iostream>
-#include "Commands.hpp"
+#include "CommandsParser.hpp"
 
 int main(){
     
-    Commands cmd;
+    CommandsParser cmd;
     
     std::cout << "Enter commands (k=add, m=find_min, n=number_smaller):" << std::endl;
     std::cout << "Example: k 4 k 3 k 2 m 1 n 1" << std::endl;
