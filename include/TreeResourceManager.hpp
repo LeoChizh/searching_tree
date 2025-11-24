@@ -1,57 +1,105 @@
-#pragma once
-#include "TreeNode.hpp"
 #include <memory>
 #include <vector>
-#include <algorithm>
+#include <unordered_map>
+#include <optional>
+#include <TreeNode.hpp>
 
-// Single Responsibility: ONLY manages node memory lifetime
 class TreeResourceManager {
+public:
+    enum class CreateResult {
+        Success,
+        TooManyNodes,
+        InvalidValue
+    };
+
 private:
     std::vector<std::unique_ptr<TreeNode>> nodes;
     std::unordered_map<TreeNode*, size_t> nodeToIndex;
+    size_t maxNodes = 1000000;
+
+    bool isValidValue([[maybe_unused]] int value) const {
+        // Add your validation logic here
+        return true; // Default for now
+    }
 
 public:
+    // Constructor
+    explicit TreeResourceManager(size_t maxNodes = 1000000) 
+        : maxNodes(maxNodes) 
+    {
+        // Optional: pre-allocate memory for better performance
+        nodes.reserve(std::min(maxNodes, size_t(1000)));
+    }
 
-    TreeResourceManager() = default;
-    ~TreeResourceManager() = default;
-    
-    TreeNode* createNode(int value = 0) {
-        // Create the node
+    // Destructor
+    ~TreeResourceManager() {
+        // Clear everything in deterministic order
+        clear();
+    }
+
+    // Primary creation method with clear status
+    std::pair<TreeNode*, CreateResult> createNode(int value = 0) noexcept {
+        if (nodes.size() >= maxNodes) {
+            return {nullptr, CreateResult::TooManyNodes};
+        }
+        if (!isValidValue(value)) {
+            return {nullptr, CreateResult::InvalidValue};
+        }
+        
         nodes.push_back(std::make_unique<TreeNode>());
         nodes.back()->value = value;
-        
-        // Get the raw pointer
         TreeNode* node = nodes.back().get();
-        
-        // CRITICAL: Build the index mapping
         nodeToIndex[node] = nodes.size() - 1;
         
-        return node;
+        return {node, CreateResult::Success};
+    }
+
+    // Simple version for cases where you don't care about failure reasons
+    TreeNode* tryCreateNode(int value = 0) noexcept {
+        auto [node, result] = createNode(value);
+        return node; // Returns nullptr on failure
     }
     
-    void deleteNode(TreeNode* node) {
-        if (!node) return;
+    bool deleteNode(TreeNode* node) noexcept {
+        if (!node) return false;
         
         auto it = nodeToIndex.find(node);
-        if (it != nodeToIndex.end()) {
-            size_t index = it->second;
-            
-            // Swap with last element for O(1) deletion
-            if (index != nodes.size() - 1) {
-                std::swap(nodes[index], nodes.back());
-                // Update the mapping for the swapped node
-                nodeToIndex[nodes[index].get()] = index;
-            }
-            
-            nodes.pop_back();
-            nodeToIndex.erase(it);
+        if (it == nodeToIndex.end()) {
+            return false;
         }
+        
+        size_t index = it->second;
+        if (index != nodes.size() - 1) {
+            std::swap(nodes[index], nodes.back());
+            nodeToIndex[nodes[index].get()] = index;
+        }
+        
+        nodes.pop_back();
+        nodeToIndex.erase(it);
+        return true;
     }
     
-    size_t getManagedNodeCount() const {
-        return nodes.size();
+    bool contains(TreeNode* node) const noexcept {
+        return nodeToIndex.find(node) != nodeToIndex.end();
     }
     
+    void clear() noexcept {
+        nodes.clear();
+        nodeToIndex.clear();
+    }
+    
+    size_t capacity() const noexcept { 
+        return maxNodes; 
+    }
+    
+    size_t getManagedNodeCount() const noexcept { 
+        return nodes.size(); 
+    }
+    
+    size_t getAvailableCapacity() const noexcept {
+        return maxNodes - nodes.size();
+    }
+
     // Prevent copying
     TreeResourceManager(const TreeResourceManager&) = delete;
     TreeResourceManager& operator=(const TreeResourceManager&) = delete;

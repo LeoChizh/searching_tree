@@ -15,11 +15,12 @@ protected:
     std::unique_ptr<TreeResourceManager> manager;
 };
 
-// Test basic creation
+// Test basic creation with new API
 TEST_F(TreeResourceManagerTest, CreateNodeBasic) {
-    TreeNode* node = manager->createNode();
+    auto [node, result] = manager->createNode();
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(node, nullptr);
-    EXPECT_EQ(node->value, 0);  // Default value
+    EXPECT_EQ(node->value, 0);
     EXPECT_EQ(node->parent, nullptr);
     EXPECT_EQ(node->left, nullptr);
     EXPECT_EQ(node->right, nullptr);
@@ -27,17 +28,33 @@ TEST_F(TreeResourceManagerTest, CreateNodeBasic) {
 
 // Test creation with specific value
 TEST_F(TreeResourceManagerTest, CreateNodeWithValue) {
-    TreeNode* node = manager->createNode(42);
+    auto [node, result] = manager->createNode(42);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(node, nullptr);
     EXPECT_EQ(node->value, 42);
 }
 
+// Test tryCreateNode method
+TEST_F(TreeResourceManagerTest, TryCreateNode) {
+    TreeNode* node = manager->tryCreateNode(42);
+    EXPECT_NE(node, nullptr);
+    EXPECT_EQ(node->value, 42);
+    
+    TreeNode* nullNode = manager->tryCreateNode(); // Default value
+    EXPECT_NE(nullNode, nullptr);
+    EXPECT_EQ(nullNode->value, 0);
+}
+
 // Test multiple node creation
 TEST_F(TreeResourceManagerTest, CreateMultipleNodes) {
-    TreeNode* node1 = manager->createNode(1);
-    TreeNode* node2 = manager->createNode(2);
-    TreeNode* node3 = manager->createNode(3);
+    auto [node1, result1] = manager->createNode(1);
+    auto [node2, result2] = manager->createNode(2);
+    auto [node3, result3] = manager->createNode(3);
 
+    EXPECT_EQ(result1, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result2, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
+    
     EXPECT_NE(node1, nullptr);
     EXPECT_NE(node2, nullptr);
     EXPECT_NE(node3, nullptr);
@@ -52,59 +69,105 @@ TEST_F(TreeResourceManagerTest, CreateMultipleNodes) {
     EXPECT_NE(node2, node3);
 }
 
-// Test node deletion
+// Test node deletion with return value
 TEST_F(TreeResourceManagerTest, DeleteNode) {
-    TreeNode* node = manager->createNode(100);
+    auto [node, result] = manager->createNode(100);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(node, nullptr);
     
-    manager->deleteNode(node);
-    // If we get here without crash, deletion worked
-    SUCCEED();
+    bool deleteResult = manager->deleteNode(node);
+    EXPECT_TRUE(deleteResult);
 }
 
 // Test deletion of null node
 TEST_F(TreeResourceManagerTest, DeleteNullNode) {
-    // This should not crash or throw
-    manager->deleteNode(nullptr);
-    SUCCEED();
+    bool result = manager->deleteNode(nullptr);
+    EXPECT_FALSE(result);
 }
 
 // Test deletion of non-managed node
 TEST_F(TreeResourceManagerTest, DeleteNonManagedNode) {
-    TreeNode externalNode;  // Not managed by TreeResourceManager
+    TreeNode externalNode;
     externalNode.value = 999;
     
-    // This should not crash or affect the external node
-    manager->deleteNode(&externalNode);
-    
-    // External node should still be valid
+    bool result = manager->deleteNode(&externalNode);
+    EXPECT_FALSE(result);
     EXPECT_EQ(externalNode.value, 999);
 }
 
-// Test memory management - nodes should be properly destroyed
+// Test contains method
+TEST_F(TreeResourceManagerTest, ContainsMethod) {
+    auto [node, result] = manager->createNode(42);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
+    
+    EXPECT_TRUE(manager->contains(node));
+    
+    manager->deleteNode(node);
+    EXPECT_FALSE(manager->contains(node));
+}
+
+// Test capacity methods
+TEST_F(TreeResourceManagerTest, CapacityMethods) {
+    EXPECT_GT(manager->capacity(), 0);
+    EXPECT_EQ(manager->getManagedNodeCount(), 0);
+    EXPECT_EQ(manager->getAvailableCapacity(), manager->capacity());
+    
+    auto [node, result] = manager->createNode(42);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
+    
+    EXPECT_EQ(manager->getManagedNodeCount(), 1);
+    EXPECT_EQ(manager->getAvailableCapacity(), manager->capacity() - 1);
+}
+
+// Test clear method
+TEST_F(TreeResourceManagerTest, ClearMethod) {
+    auto [node1, result1] = manager->createNode(1);
+    auto [node2, result2] = manager->createNode(2);
+    
+    EXPECT_EQ(manager->getManagedNodeCount(), 2);
+    EXPECT_TRUE(manager->contains(node1));
+    EXPECT_TRUE(manager->contains(node2));
+    
+    manager->clear();
+    
+    EXPECT_EQ(manager->getManagedNodeCount(), 0);
+    EXPECT_FALSE(manager->contains(node1));
+    EXPECT_FALSE(manager->contains(node2));
+    
+    // Should be able to create new nodes after clear
+    auto [node3, result3] = manager->createNode(3);
+    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(manager->getManagedNodeCount(), 1);
+}
+
+// Test memory management
 TEST_F(TreeResourceManagerTest, MemoryManagement) {
-    TreeNode* node1 = manager->createNode(1);
+    auto [node1, result1] = manager->createNode(1);
     manager->createNode(2);  // node2 not stored
     
-    // Delete one node
-    manager->deleteNode(node1);
+    EXPECT_EQ(manager->getManagedNodeCount(), 2);
+    
+    bool deleteResult = manager->deleteNode(node1);
+    EXPECT_TRUE(deleteResult);
+    EXPECT_EQ(manager->getManagedNodeCount(), 1);
     
     // Manager should still be functional
-    TreeNode* node3 = manager->createNode(3);
-    EXPECT_NE(node3, nullptr);
-    EXPECT_EQ(node3->value, 3);
+    auto [node3, result3] = manager->createNode(3);
+    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(manager->getManagedNodeCount(), 2);
 }
 
 // Test that nodes are properly cleaned up when manager is destroyed
 TEST_F(TreeResourceManagerTest, ManagerDestructionCleansUpNodes) {
     auto localManager = std::make_unique<TreeResourceManager>();
-    TreeNode* node1 = localManager->createNode(1);
-    TreeNode* node2 = localManager->createNode(2);
-    TreeNode* node3 = localManager->createNode(3);
+    auto [node1, result1] = localManager->createNode(1);
+    auto [node2, result2] = localManager->createNode(2);
+    auto [node3, result3] = localManager->createNode(3);
     
-    EXPECT_NE(node1, nullptr);
-    EXPECT_NE(node2, nullptr);
-    EXPECT_NE(node3, nullptr);
+    EXPECT_EQ(result1, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result2, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(localManager->getManagedNodeCount(), 3);
     
     // localManager destroyed here, all nodes should be destroyed
     localManager.reset();
@@ -114,37 +177,46 @@ TEST_F(TreeResourceManagerTest, ManagerDestructionCleansUpNodes) {
 
 // Test move semantics
 TEST_F(TreeResourceManagerTest, MoveConstruction) {
-    manager->createNode(50);  // originalNode not stored
+    auto [node, result] = manager->createNode(50);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     
     // Move the manager
     TreeResourceManager movedManager = std::move(*manager);
     
     // Original manager should be empty but usable
-    TreeNode* newNode = manager->createNode(60);
+    auto [newNode, newResult] = manager->createNode(60);
+    EXPECT_EQ(newResult, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(newNode, nullptr);
     
     // Moved manager should be functional
-    TreeNode* movedNode = movedManager.createNode(70);
+    auto [movedNode, movedResult] = movedManager.createNode(70);
+    EXPECT_EQ(movedResult, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(movedNode, nullptr);
 }
 
 // Test move assignment
 TEST_F(TreeResourceManagerTest, MoveAssignment) {
     auto otherManager = std::make_unique<TreeResourceManager>();
-    otherManager->createNode(80);  // otherNode not stored
+    auto [otherNode, otherResult] = otherManager->createNode(80);
+    EXPECT_EQ(otherResult, TreeResourceManager::CreateResult::Success);
     
     *manager = std::move(*otherManager);
     
     // otherManager should still be in valid state
-    TreeNode* newNode = otherManager->createNode(90);
+    auto [newNode, newResult] = otherManager->createNode(90);
+    EXPECT_EQ(newResult, TreeResourceManager::CreateResult::Success);
     EXPECT_NE(newNode, nullptr);
 }
 
 // Test node relationships can be established with managed nodes
 TEST_F(TreeResourceManagerTest, NodeRelationships) {
-    TreeNode* parent = manager->createNode(1);
-    TreeNode* leftChild = manager->createNode(2);
-    TreeNode* rightChild = manager->createNode(3);
+    auto [parent, parentResult] = manager->createNode(1);
+    auto [leftChild, leftResult] = manager->createNode(2);
+    auto [rightChild, rightResult] = manager->createNode(3);
+    
+    EXPECT_EQ(parentResult, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(leftResult, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(rightResult, TreeResourceManager::CreateResult::Success);
     
     // Establish relationships
     parent->left = leftChild;
@@ -169,25 +241,37 @@ TEST_F(TreeResourceManagerTest, ManyNodes) {
     const int NUM_NODES = 1000;
     
     for (int i = 0; i < NUM_NODES; ++i) {
-        TreeNode* node = manager->createNode(i);
+        auto [node, result] = manager->createNode(i);
+        EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
         EXPECT_NE(node, nullptr);
         EXPECT_EQ(node->value, i);
     }
     
-    SUCCEED();  // If we get here, no crashes with many nodes
+    EXPECT_EQ(manager->getManagedNodeCount(), NUM_NODES);
+    SUCCEED();
 }
 
 // Test that deleted nodes are truly removed from management
 TEST_F(TreeResourceManagerTest, DeleteRemovesFromManagement) {
-    TreeNode* node1 = manager->createNode(1);
-    TreeNode* node2 = manager->createNode(2);
+    auto [node1, result1] = manager->createNode(1);
+    auto [node2, result2] = manager->createNode(2);
+    
+    EXPECT_EQ(result1, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result2, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(manager->getManagedNodeCount(), 2);
     
     // Delete node1
-    manager->deleteNode(node1);
+    bool deleteResult = manager->deleteNode(node1);
+    EXPECT_TRUE(deleteResult);
+    EXPECT_EQ(manager->getManagedNodeCount(), 1);
     
     // Create new nodes
-    TreeNode* node3 = manager->createNode(3);
-    TreeNode* node4 = manager->createNode(4);
+    auto [node3, result3] = manager->createNode(3);
+    auto [node4, result4] = manager->createNode(4);
+    
+    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(result4, TreeResourceManager::CreateResult::Success);
+    EXPECT_EQ(manager->getManagedNodeCount(), 3);
     
     // All should be valid
     EXPECT_NE(node2, nullptr);
@@ -196,4 +280,39 @@ TEST_F(TreeResourceManagerTest, DeleteRemovesFromManagement) {
     EXPECT_EQ(node2->value, 2);
     EXPECT_EQ(node3->value, 3);
     EXPECT_EQ(node4->value, 4);
+}
+
+// Test custom constructor with capacity
+TEST_F(TreeResourceManagerTest, CustomCapacity) {
+    TreeResourceManager smallManager(5);  // Small capacity for testing
+    
+    // Fill up to capacity
+    for (int i = 0; i < 5; ++i) {
+        auto [node, result] = smallManager.createNode(i);
+        EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
+    }
+    
+    // Next creation should fail
+    auto [node, result] = smallManager.createNode(6);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::TooManyNodes);
+    EXPECT_EQ(node, nullptr);
+}
+
+// Test deleteNode return value accuracy
+TEST_F(TreeResourceManagerTest, DeleteNodeReturnValueAccuracy) {
+    auto [node, result] = manager->createNode(42);
+    EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
+    
+    // First deletion should succeed
+    bool firstDelete = manager->deleteNode(node);
+    EXPECT_TRUE(firstDelete);
+    
+    // Second deletion should fail
+    bool secondDelete = manager->deleteNode(node);
+    EXPECT_FALSE(secondDelete);
+    
+    // Deletion of unknown node should fail
+    TreeNode externalNode;
+    bool externalDelete = manager->deleteNode(&externalNode);
+    EXPECT_FALSE(externalDelete);
 }
