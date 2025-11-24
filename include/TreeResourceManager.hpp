@@ -1,8 +1,10 @@
+#pragma once
 #include <memory>
 #include <vector>
-#include <unordered_map>
 #include <optional>
-#include <TreeNode.hpp>
+#include <queue>
+#include "TreeNode.hpp"
+#include "TreeResourceHandle.hpp"
 
 class TreeResourceManager {
 public:
@@ -12,92 +14,131 @@ public:
         InvalidValue
     };
 
-private:
-    std::vector<std::unique_ptr<TreeNode>> nodes;
-    std::unordered_map<TreeNode*, size_t> nodeToIndex;
-    size_t maxNodes = 1000000;
+     // Use the public handle type
+    using NodeHandle = TreeResourceHandle;
 
+private:
+    struct NodeEntry {
+        std::unique_ptr<TreeNode> node;
+        uint32_t generation = 1;
+        bool isActive = false;
+    };
+    
+    std::vector<NodeEntry> nodes;
+    std::queue<size_t> freeIndices;
+    size_t maxNodes = 1000000;
+    
     bool isValidValue([[maybe_unused]] int value) const {
-        // Add your validation logic here
-        return true; // Default for now
+        return true;
     }
 
 public:
-    // Constructor
     explicit TreeResourceManager(size_t maxNodes = 1000000) 
         : maxNodes(maxNodes) 
     {
-        // Optional: pre-allocate memory for better performance
         nodes.reserve(std::min(maxNodes, size_t(1000)));
     }
 
-    // Destructor
     ~TreeResourceManager() {
-        // Clear everything in deterministic order
         clear();
     }
 
-    // Primary creation method with clear status
-    std::pair<TreeNode*, CreateResult> createNode(int value = 0) noexcept {
-        if (nodes.size() >= maxNodes) {
-            return {nullptr, CreateResult::TooManyNodes};
+    std::pair<NodeHandle, CreateResult> createNode(int value = 0) noexcept {
+        if (getActiveNodeCount() >= maxNodes) {
+            return {NodeHandle{}, CreateResult::TooManyNodes};
         }
         if (!isValidValue(value)) {
-            return {nullptr, CreateResult::InvalidValue};
+            return {NodeHandle{}, CreateResult::InvalidValue};
         }
         
-        nodes.push_back(std::make_unique<TreeNode>());
-        nodes.back()->value = value;
-        TreeNode* node = nodes.back().get();
-        nodeToIndex[node] = nodes.size() - 1;
+        size_t index;
+        NodeEntry* entry = nullptr;
         
-        return {node, CreateResult::Success};
+        if (!freeIndices.empty()) {
+            // Reuse existing slot
+            index = freeIndices.front();
+            freeIndices.pop();
+            entry = &nodes[index];
+            entry->generation++;  // CRITICAL: Different generation for reuse
+        } else {
+            // Create new slot
+            index = nodes.size();
+            nodes.push_back(NodeEntry{});
+            entry = &nodes[index];
+            entry->generation = 1;  // Start new slots at generation 1
+        }
+        
+        entry->node = std::make_unique<TreeNode>();
+        entry->node->value = value;
+        entry->isActive = true;
+        
+        NodeHandle handle{index, entry->generation};
+        return {handle, CreateResult::Success};
     }
 
-    // Simple version for cases where you don't care about failure reasons
-    TreeNode* tryCreateNode(int value = 0) noexcept {
-        auto [node, result] = createNode(value);
-        return node; // Returns nullptr on failure
+    // Simple version
+    NodeHandle tryCreateNode(int value = 0) noexcept {
+        auto [handle, result] = createNode(value);
+        return handle;
     }
     
-    bool deleteNode(TreeNode* node) noexcept {
-        if (!node) return false;
+    // Safe node access
+    TreeNode* getNode(NodeHandle handle) const noexcept {
+        if (!handle.isValid() || handle.index >= nodes.size()) {
+            return nullptr;
+        }
         
-        auto it = nodeToIndex.find(node);
-        if (it == nodeToIndex.end()) {
+        const auto& entry = nodes[handle.index];
+        if (!entry.isActive || entry.generation != handle.generation) {
+            return nullptr;
+        }
+        
+        return entry.node.get();
+    }
+    
+    // Safe deletion
+    bool deleteNode(NodeHandle handle) noexcept {
+        if (!handle.isValid() || handle.index >= nodes.size()) {
             return false;
         }
         
-        size_t index = it->second;
-        if (index != nodes.size() - 1) {
-            std::swap(nodes[index], nodes.back());
-            nodeToIndex[nodes[index].get()] = index;
+        auto& entry = nodes[handle.index];
+        if (!entry.isActive || entry.generation != handle.generation) {
+            return false;
         }
         
-        nodes.pop_back();
-        nodeToIndex.erase(it);
+        // Reset the node and mark as free
+        entry.node.reset();
+        entry.isActive = false;
+        freeIndices.push(handle.index);
+        
         return true;
     }
     
-    bool contains(TreeNode* node) const noexcept {
-        return nodeToIndex.find(node) != nodeToIndex.end();
+    // Safe node validation
+    bool isValidHandle(NodeHandle handle) const noexcept {
+        return getNode(handle) != nullptr;
     }
     
     void clear() noexcept {
         nodes.clear();
-        nodeToIndex.clear();
+        while (!freeIndices.empty()) freeIndices.pop();
     }
     
     size_t capacity() const noexcept { 
         return maxNodes; 
     }
     
-    size_t getManagedNodeCount() const noexcept { 
+    size_t getTotalNodeCount() const noexcept { 
         return nodes.size(); 
     }
     
+    size_t getActiveNodeCount() const noexcept {
+        return nodes.size() - freeIndices.size();
+    }
+    
     size_t getAvailableCapacity() const noexcept {
-        return maxNodes - nodes.size();
+        return maxNodes - getActiveNodeCount();
     }
 
     // Prevent copying
