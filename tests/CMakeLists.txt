@@ -12,6 +12,7 @@ set(TEST_SOURCES
     test_treeStructure.cpp
     test_AVLTree.cpp
     test_findingSmallest.cpp
+    test_countSmallerThan.cpp
     # Add new tests here manually
 )
 

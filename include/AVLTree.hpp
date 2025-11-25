@@ -56,7 +56,7 @@ public:
     // Public interface
     void clear() {
         if (root.isValid()) {
-            clearSubtree(root);
+            clearSubtreeIterative(root);
             root = NodeHandle();
         }
         pool.clear(); // Clear the entire pool
@@ -107,7 +107,11 @@ public:
         return findNthSmallestSubtree(root, n, count);
     }
 
-    
+    // Count how many nodes have values smaller than n
+    size_t countSmallerThan(int n) const {
+        return countSmallerThanSubtree(root, n);
+    }
+  
 
 private:
     TreeNodePool pool;
@@ -144,21 +148,31 @@ private:
         }
     }
     
-    // Recursive cleanup
-    void clearSubtree(NodeHandle nodeHandle) {
+    void clearSubtreeIterative(NodeHandle nodeHandle) {
         if (!nodeHandle.isValid()) return;
         
-        // Get children first (before deletion)
-        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
-        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+        std::queue<NodeHandle> queue;
+        queue.push(nodeHandle);
         
-        // Recursively clear children
-        clearSubtree(leftChild);
-        clearSubtree(rightChild);
-        
-        // Delete this node
-        pool.deleteNode(nodeHandle);
+        while (!queue.empty()) {
+            NodeHandle current = queue.front();
+            queue.pop();
+            
+            NodeHandle leftChild = TreeStructure::getLeftChild(pool, current);
+            NodeHandle rightChild = TreeStructure::getRightChild(pool, current);
+            
+            // Enqueue children before deleting parent
+            if (leftChild.isValid()) {
+                queue.push(leftChild);
+            }
+            if (rightChild.isValid()) {
+                queue.push(rightChild);
+            }
+            
+            // Delete current node (safe because children are copied to queue)
+            pool.deleteNode(current);
     }
+}
     
     // AVL Tree operations - using TreeStructure
     std::pair<NodeHandle, bool> insertNode(NodeHandle nodeHandle, int value) {
@@ -436,4 +450,23 @@ private:
         return findNthSmallestSubtree(
             TreeStructure::getRightChild(pool, node), n, count);
     }
+
+    size_t countSmallerThanSubtree(NodeHandle node, int n) const {
+        if (!node.isValid()) return 0;
+        
+        auto value = TreeStructure::getNodeValue(pool, node);
+        if (!value.has_value()) return 0;
+        
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, node);
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, node);
+        
+        if (value.value() >= n) {
+            // Current node >= n, so only check left subtree
+            return countSmallerThanSubtree(leftChild, n);
+        } else {
+            // Current node < n, so count this node + all in left subtree + check right subtree
+            return 1 + countSmallerThanSubtree(leftChild, n) + countSmallerThanSubtree(rightChild, n);
+        }
+    }
+
 };
