@@ -97,6 +97,11 @@ public:
         return calculateHeight(root);
     }
 
+    std::string visualize() const {
+        if (empty()) return "Empty tree";
+        return visualizeSubtree(root, 0);
+    }
+
 private:
     TreeNodePool pool;
     NodeHandle root;
@@ -369,4 +374,38 @@ private:
     // Prevent dangerous operations
     AVLTree(const AVLTree&&) = delete;
     AVLTree& operator=(const AVLTree&&) = delete;
+
+    std::string visualizeSubtree(NodeHandle node, int depth) const {
+        if (!node.isValid()) return "";
+        
+        auto value = TreeStructure::getNodeValue(pool, node);
+        auto balance = TreeStructure::getBalanceFactor(pool, node);
+        auto height = TreeStructure::getHeight(pool, node);
+        
+        if (!value.has_value() || !balance.has_value() || !height.has_value()) {
+            return "";
+        }
+        
+        std::stringstream ss;
+        
+        // Right child first
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, node);
+        if (rightChild.isValid()) {
+            ss << visualizeSubtree(rightChild, depth + 1);
+        }
+        
+        // Current node with indentation
+        for (int i = 0; i < depth; ++i) {
+            ss << "    ";
+        }
+        ss << value.value() << " [H:" << height.value() << " B:" << balance.value() << "]\n";
+        
+        // Left child last
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, node);
+        if (leftChild.isValid()) {
+            ss << visualizeSubtree(leftChild, depth + 1);
+        }
+        
+        return ss.str();
+    }
 };
