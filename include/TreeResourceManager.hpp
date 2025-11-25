@@ -1,5 +1,4 @@
 #pragma once
-#include <memory>
 #include <vector>
 #include <optional>
 #include <queue>
@@ -14,12 +13,11 @@ public:
         InvalidValue
     };
 
-     // Use the public handle type
     using NodeHandle = TreeResourceHandle;
 
 private:
     struct NodeEntry {
-        std::unique_ptr<TreeNode> node;
+        TreeNode node;           // Direct storage
         uint32_t generation = 1;
         bool isActive = false;
     };
@@ -27,10 +25,6 @@ private:
     std::vector<NodeEntry> nodes;
     std::queue<size_t> freeIndices;
     size_t maxNodes = 1000000;
-    
-    bool isValidValue([[maybe_unused]] int value) const {
-        return true;
-    }
 
 public:
     explicit TreeResourceManager(size_t maxNodes = 1000000) 
@@ -47,77 +41,131 @@ public:
         if (getActiveNodeCount() >= maxNodes) {
             return {NodeHandle{}, CreateResult::TooManyNodes};
         }
-        if (!isValidValue(value)) {
-            return {NodeHandle{}, CreateResult::InvalidValue};
-        }
         
         size_t index;
         NodeEntry* entry = nullptr;
         
         if (!freeIndices.empty()) {
-            // Reuse existing slot
             index = freeIndices.front();
             freeIndices.pop();
             entry = &nodes[index];
-            entry->generation++;  // CRITICAL: Different generation for reuse
+            entry->generation++;
         } else {
-            // Create new slot
             index = nodes.size();
             nodes.push_back(NodeEntry{});
             entry = &nodes[index];
-            entry->generation = 1;  // Start new slots at generation 1
+            entry->generation = 1;
         }
         
-        entry->node = std::make_unique<TreeNode>();
-        entry->node->value = value;
+        entry->node = TreeNode{};
+        entry->node.value = value;
         entry->isActive = true;
         
         NodeHandle handle{index, entry->generation};
         return {handle, CreateResult::Success};
     }
 
-    // Simple version
     NodeHandle tryCreateNode(int value = 0) noexcept {
         auto [handle, result] = createNode(value);
         return handle;
     }
     
-    // Safe node access
-    TreeNode* getNode(NodeHandle handle) const noexcept {
+    // Safe node validation
+    bool isValidHandle(NodeHandle handle) const noexcept {
         if (!handle.isValid() || handle.index >= nodes.size()) {
-            return nullptr;
+            return false;
         }
         
         const auto& entry = nodes[handle.index];
-        if (!entry.isActive || entry.generation != handle.generation) {
-            return nullptr;
-        }
+        return entry.isActive && entry.generation == handle.generation;
+    }
+    
+    // Node property accessors
+    std::optional<int> getNodeValue(NodeHandle handle) const noexcept {
+        if (!isValidHandle(handle)) return std::nullopt;
+        return nodes[handle.index].node.value;
+    }
+    
+    std::optional<int> getBalanceFactor(NodeHandle handle) const noexcept {
+        if (!isValidHandle(handle)) return std::nullopt;
+        return nodes[handle.index].node.balanceFactor;
+    }
+    
+    std::optional<int> getHeight(NodeHandle handle) const noexcept {
+        if (!isValidHandle(handle)) return std::nullopt;
+        return nodes[handle.index].node.height;
+    }
+    
+    // Node property setters
+    bool setNodeValue(NodeHandle handle, int value) noexcept {
+        if (!isValidHandle(handle)) return false;
+        nodes[handle.index].node.value = value;
+        return true;
+    }
+    
+    bool setBalanceFactor(NodeHandle handle, int balance) noexcept {
+        if (!isValidHandle(handle)) return false;
+        nodes[handle.index].node.balanceFactor = balance;
+        return true;
+    }
+    
+    bool setHeight(NodeHandle handle, int height) noexcept {
+        if (!isValidHandle(handle)) return false;
+        nodes[handle.index].node.height = height;
+        return true;
+    }
+    
+    // Tree structure operations
+    NodeHandle getLeftChild(NodeHandle parent) const noexcept {
+        if (!isValidHandle(parent)) return NodeHandle{};
+        return nodes[parent.index].node.left;
+    }
+    
+    NodeHandle getRightChild(NodeHandle parent) const noexcept {
+        if (!isValidHandle(parent)) return NodeHandle{};
+        return nodes[parent.index].node.right;
+    }
+    
+    NodeHandle getParent(NodeHandle child) const noexcept {
+        if (!isValidHandle(child)) return NodeHandle{};
+        return nodes[child.index].node.parent;
+    }
+    
+    bool setLeftChild(NodeHandle parent, NodeHandle leftChild) noexcept {
+        // Only validate parent - allow invalid leftChild (leaf node case)
+        if (!isValidHandle(parent)) return false;
         
-        return entry.node.get();
+        nodes[parent.index].node.left = leftChild;
+        
+        // Update the child's parent reference only if child is valid
+        if (leftChild.isValid() && isValidHandle(leftChild)) {
+            nodes[leftChild.index].node.parent = parent;
+        }
+        return true;
+    }
+
+    bool setRightChild(NodeHandle parent, NodeHandle rightChild) noexcept {
+        // Only validate parent - allow invalid rightChild (leaf node case)
+        if (!isValidHandle(parent)) return false;
+        
+        nodes[parent.index].node.right = rightChild;
+        
+        // Update the child's parent reference only if child is valid
+        if (rightChild.isValid() && isValidHandle(rightChild)) {
+            nodes[rightChild.index].node.parent = parent;
+        }
+        return true;
     }
     
     // Safe deletion
     bool deleteNode(NodeHandle handle) noexcept {
-        if (!handle.isValid() || handle.index >= nodes.size()) {
-            return false;
-        }
+        if (!isValidHandle(handle)) return false;
         
-        auto& entry = nodes[handle.index];
-        if (!entry.isActive || entry.generation != handle.generation) {
-            return false;
-        }
-        
-        // Reset the node and mark as free
-        entry.node.reset();
-        entry.isActive = false;
+        nodes[handle.index].node = TreeNode{};
+        nodes[handle.index].isActive = false;
         freeIndices.push(handle.index);
         
         return true;
-    }
-    
-    // Safe node validation
-    bool isValidHandle(NodeHandle handle) const noexcept {
-        return getNode(handle) != nullptr;
     }
     
     void clear() noexcept {
@@ -125,21 +173,10 @@ public:
         while (!freeIndices.empty()) freeIndices.pop();
     }
     
-    size_t capacity() const noexcept { 
-        return maxNodes; 
-    }
-    
-    size_t getTotalNodeCount() const noexcept { 
-        return nodes.size(); 
-    }
-    
-    size_t getActiveNodeCount() const noexcept {
-        return nodes.size() - freeIndices.size();
-    }
-    
-    size_t getAvailableCapacity() const noexcept {
-        return maxNodes - getActiveNodeCount();
-    }
+    size_t capacity() const noexcept { return maxNodes; }
+    size_t getTotalNodeCount() const noexcept { return nodes.size(); }
+    size_t getActiveNodeCount() const noexcept { return nodes.size() - freeIndices.size(); }
+    size_t getAvailableCapacity() const noexcept { return maxNodes - getActiveNodeCount(); }
 
     // Prevent copying
     TreeResourceManager(const TreeResourceManager&) = delete;

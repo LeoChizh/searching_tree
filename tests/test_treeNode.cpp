@@ -4,60 +4,37 @@
 class TreeNodeTest : public ::testing::Test {
 protected:
     void SetUp() override {
-        // Create some test nodes
-        root = new TreeNode();
-        leftChild = new TreeNode();
-        rightChild = new TreeNode();
+        // Create test nodes with handles
+        root = TreeNode();
+        leftChild = TreeNode();
+        rightChild = TreeNode();
         
-        // Set up relationships
-        root->left = leftChild;
-        root->right = rightChild;
-        leftChild->parent = root;
-        rightChild->parent = root;
+        // Set up relationships using handles
+        root.left = TreeResourceHandle{1, 1};  // Mock handles
+        root.right = TreeResourceHandle{2, 1};
+        leftChild.parent = TreeResourceHandle{0, 1};  // root handle
+        rightChild.parent = TreeResourceHandle{0, 1}; // root handle
         
-        root->value = 10;
-        leftChild->value = 5;
-        rightChild->value = 15;
+        root.value = 10;
+        leftChild.value = 5;
+        rightChild.value = 15;
     }
     
-    void TearDown() override {
-        delete leftChild;
-        delete rightChild;
-        delete root;
-    }
-    
-    TreeNode* root = nullptr;
-    TreeNode* leftChild = nullptr;
-    TreeNode* rightChild = nullptr;
+    TreeNode root;
+    TreeNode leftChild;
+    TreeNode rightChild;
 };
 
 // Test default constructor
 TEST_F(TreeNodeTest, DefaultConstructor) {
     TreeNode node;
     
-    EXPECT_EQ(node.parent, nullptr);
-    EXPECT_EQ(node.left, nullptr);
-    EXPECT_EQ(node.right, nullptr);
+    EXPECT_FALSE(node.parent.isValid());
+    EXPECT_FALSE(node.left.isValid());
+    EXPECT_FALSE(node.right.isValid());
     EXPECT_EQ(node.value, 0);
-    EXPECT_EQ(node.balancer, 0);
-}
-
-// Test parameterized constructor
-TEST_F(TreeNodeTest, ParameterizedConstructor) {
-    TreeNode* parent = new TreeNode();
-    TreeNode* left = new TreeNode();
-    TreeNode* right = new TreeNode();
-    
-    TreeNode node(parent, left, right, 42);
-    
-    EXPECT_EQ(node.parent, parent);
-    EXPECT_EQ(node.left, left);
-    EXPECT_EQ(node.right, right);
-    EXPECT_EQ(node.value, 42);
-    
-    delete left;
-    delete right;
-    delete parent;
+    EXPECT_EQ(node.balanceFactor, 0);
+    EXPECT_EQ(node.height, 0);
 }
 
 // Test isLeaf method
@@ -66,37 +43,44 @@ TEST_F(TreeNodeTest, IsLeaf) {
     EXPECT_TRUE(leafNode.isLeaf());
     
     TreeNode nonLeafNode;
-    nonLeafNode.left = new TreeNode();
+    nonLeafNode.left = TreeResourceHandle{1, 1};
     EXPECT_FALSE(nonLeafNode.isLeaf());
-    
-    delete nonLeafNode.left;
 }
 
 TEST_F(TreeNodeTest, IsLeafWithChildren) {
-    EXPECT_FALSE(root->isLeaf());  // Has both children
-    EXPECT_TRUE(leftChild->isLeaf());  // No children
-    EXPECT_TRUE(rightChild->isLeaf());  // No children
+    EXPECT_FALSE(root.isLeaf());  // Has both children
+    EXPECT_TRUE(leftChild.isLeaf());  // No children (handles are invalid)
+    EXPECT_TRUE(rightChild.isLeaf());  // No children (handles are invalid)
 }
 
 // Test isRoot method
 TEST_F(TreeNodeTest, IsRoot) {
-    EXPECT_TRUE(root->isRoot());  // No parent
-    EXPECT_FALSE(leftChild->isRoot());  // Has parent
-    EXPECT_FALSE(rightChild->isRoot());  // Has parent
+    TreeNode rootNode;
+    EXPECT_TRUE(rootNode.isRoot());  // No parent
+    
+    TreeNode childNode;
+    childNode.parent = TreeResourceHandle{1, 1};
+    EXPECT_FALSE(childNode.isRoot());  // Has parent
 }
 
 // Test hasLeft method
 TEST_F(TreeNodeTest, HasLeft) {
-    EXPECT_TRUE(root->hasLeft());  // Has left child
-    EXPECT_FALSE(leftChild->hasLeft());  // No left child
-    EXPECT_FALSE(rightChild->hasLeft());  // No left child
+    TreeNode nodeWithLeft;
+    nodeWithLeft.left = TreeResourceHandle{1, 1};
+    EXPECT_TRUE(nodeWithLeft.hasLeft());
+    
+    TreeNode nodeWithoutLeft;
+    EXPECT_FALSE(nodeWithoutLeft.hasLeft());
 }
 
 // Test hasRight method
 TEST_F(TreeNodeTest, HasRight) {
-    EXPECT_TRUE(root->hasRight());  // Has right child
-    EXPECT_FALSE(leftChild->hasRight());  // No right child
-    EXPECT_FALSE(rightChild->hasRight());  // No right child
+    TreeNode nodeWithRight;
+    nodeWithRight.right = TreeResourceHandle{1, 1};
+    EXPECT_TRUE(nodeWithRight.hasRight());
+    
+    TreeNode nodeWithoutRight;
+    EXPECT_FALSE(nodeWithoutRight.hasRight());
 }
 
 // Test value assignment and retrieval
@@ -109,25 +93,49 @@ TEST_F(TreeNodeTest, ValueAssignment) {
     EXPECT_EQ(node.value, -50);
 }
 
-// Test balancer assignment and retrieval
-TEST_F(TreeNodeTest, BalancerAssignment) {
+// Test balanceFactor assignment and retrieval
+TEST_F(TreeNodeTest, BalanceFactorAssignment) {
     TreeNode node;
-    node.balancer = 1;
-    EXPECT_EQ(node.balancer, 1);
+    node.balanceFactor = 1;
+    EXPECT_EQ(node.balanceFactor, 1);
     
-    node.balancer = -1;
-    EXPECT_EQ(node.balancer, -1);
+    node.balanceFactor = -1;
+    EXPECT_EQ(node.balanceFactor, -1);
     
-    node.balancer = 0;
-    EXPECT_EQ(node.balancer, 0);
+    node.balanceFactor = 0;
+    EXPECT_EQ(node.balanceFactor, 0);
 }
 
-// Test parent-child relationships
-TEST_F(TreeNodeTest, ParentChildRelationships) {
-    EXPECT_EQ(leftChild->parent, root);
-    EXPECT_EQ(rightChild->parent, root);
-    EXPECT_EQ(root->left, leftChild);
-    EXPECT_EQ(root->right, rightChild);
+// Test height assignment and retrieval
+TEST_F(TreeNodeTest, HeightAssignment) {
+    TreeNode node;
+    node.height = 5;
+    EXPECT_EQ(node.height, 5);
+    
+    node.height = 0;
+    EXPECT_EQ(node.height, 0);
+    
+    node.height = 100;
+    EXPECT_EQ(node.height, 100);
+}
+
+// Test handle validity
+TEST_F(TreeNodeTest, HandleValidity) {
+    TreeNode node;
+    
+    // Test invalid handles
+    EXPECT_FALSE(node.parent.isValid());
+    EXPECT_FALSE(node.left.isValid());
+    EXPECT_FALSE(node.right.isValid());
+    
+    // Test valid handles
+    node.parent = TreeResourceHandle{0, 1};
+    node.left = TreeResourceHandle{1, 1};
+    node.right = TreeResourceHandle{2, 1};
+    
+    EXPECT_TRUE(node.parent.isValid());
+    EXPECT_TRUE(node.left.isValid());
+    EXPECT_TRUE(node.right.isValid());
 }
 
 // Test edge cases for query methods
@@ -141,7 +149,7 @@ TEST_F(TreeNodeTest, EdgeCases) {
     EXPECT_FALSE(node.hasRight());
     
     // Add only left child
-    node.left = new TreeNode();
+    node.left = TreeResourceHandle{1, 1};
     EXPECT_FALSE(node.isLeaf());
     EXPECT_TRUE(node.isRoot());
     EXPECT_TRUE(node.hasLeft());
@@ -149,14 +157,11 @@ TEST_F(TreeNodeTest, EdgeCases) {
     
     // Add only right child
     TreeNode node2;
-    node2.right = new TreeNode();
+    node2.right = TreeResourceHandle{1, 1};
     EXPECT_FALSE(node2.isLeaf());
     EXPECT_TRUE(node2.isRoot());
     EXPECT_FALSE(node2.hasLeft());
     EXPECT_TRUE(node2.hasRight());
-    
-    delete node.left;
-    delete node2.right;
 }
 
 // Test node with only one child
@@ -164,8 +169,8 @@ TEST_F(TreeNodeTest, SingleChildNode) {
     TreeNode parent;
     TreeNode child;
     
-    parent.left = &child;
-    child.parent = &parent;
+    parent.left = TreeResourceHandle{1, 1};  // Mock child handle
+    child.parent = TreeResourceHandle{0, 1}; // Mock parent handle
     
     EXPECT_FALSE(parent.isLeaf());
     EXPECT_TRUE(parent.isRoot());
@@ -176,38 +181,4 @@ TEST_F(TreeNodeTest, SingleChildNode) {
     EXPECT_FALSE(child.isRoot());
     EXPECT_FALSE(child.hasLeft());
     EXPECT_FALSE(child.hasRight());
-}
-
-// Test complex tree structure
-TEST_F(TreeNodeTest, ComplexTreeStructure) {
-    TreeNode* grandparent = new TreeNode();
-    TreeNode* parent = new TreeNode();
-    TreeNode* child1 = new TreeNode();
-    TreeNode* child2 = new TreeNode();
-    
-    // Build: grandparent -> parent -> (child1, child2)
-    grandparent->left = parent;
-    parent->parent = grandparent;
-    parent->left = child1;
-    parent->right = child2;
-    child1->parent = parent;
-    child2->parent = parent;
-    
-    EXPECT_TRUE(grandparent->isRoot());
-    EXPECT_FALSE(grandparent->isLeaf());
-    EXPECT_TRUE(grandparent->hasLeft());
-    EXPECT_FALSE(grandparent->hasRight());
-    
-    EXPECT_FALSE(parent->isRoot());
-    EXPECT_FALSE(parent->isLeaf());
-    EXPECT_TRUE(parent->hasLeft());
-    EXPECT_TRUE(parent->hasRight());
-    
-    EXPECT_TRUE(child1->isLeaf());
-    EXPECT_FALSE(child1->isRoot());
-    
-    delete grandparent;
-    delete parent;
-    delete child1;
-    delete child2;
 }

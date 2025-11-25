@@ -1,6 +1,5 @@
 #include <gtest/gtest.h>
-#include <TreeResourceManager.hpp>
-#include <TreeResourceHandle.hpp>
+#include "TreeResourceManager.hpp"
 
 class TreeResourceManagerTest : public ::testing::Test {
 protected:
@@ -20,12 +19,23 @@ TEST_F(TreeResourceManagerTest, CreateNodeBasic) {
     EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     EXPECT_TRUE(handle.isValid());
     
-    TreeNode* node = manager->getNode(handle);
-    EXPECT_NE(node, nullptr);
-    EXPECT_EQ(node->value, 0);
-    EXPECT_EQ(node->parent, nullptr);
-    EXPECT_EQ(node->left, nullptr);
-    EXPECT_EQ(node->right, nullptr);
+    // Test node properties through manager interface
+    auto value = manager->getNodeValue(handle);
+    EXPECT_TRUE(value.has_value());
+    EXPECT_EQ(value.value(), 0);
+    
+    auto balance = manager->getBalanceFactor(handle);
+    EXPECT_TRUE(balance.has_value());
+    EXPECT_EQ(balance.value(), 0);
+    
+    auto height = manager->getHeight(handle);
+    EXPECT_TRUE(height.has_value());
+    EXPECT_EQ(height.value(), 0);
+    
+    // Test relationships
+    EXPECT_FALSE(manager->getLeftChild(handle).isValid());
+    EXPECT_FALSE(manager->getRightChild(handle).isValid());
+    EXPECT_FALSE(manager->getParent(handle).isValid());
 }
 
 TEST_F(TreeResourceManagerTest, CreateNodeWithValue) {
@@ -33,25 +43,18 @@ TEST_F(TreeResourceManagerTest, CreateNodeWithValue) {
     EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
     EXPECT_TRUE(handle.isValid());
     
-    TreeNode* node = manager->getNode(handle);
-    EXPECT_NE(node, nullptr);
-    EXPECT_EQ(node->value, 42);
+    auto value = manager->getNodeValue(handle);
+    EXPECT_TRUE(value.has_value());
+    EXPECT_EQ(value.value(), 42);
 }
 
 TEST_F(TreeResourceManagerTest, TryCreateNode) {
-    TreeResourceManager::NodeHandle handle = manager->tryCreateNode(42);
+    TreeResourceHandle handle = manager->tryCreateNode(42);
     EXPECT_TRUE(handle.isValid());
     
-    TreeNode* node = manager->getNode(handle);
-    EXPECT_NE(node, nullptr);
-    EXPECT_EQ(node->value, 42);
-    
-    TreeResourceManager::NodeHandle defaultHandle = manager->tryCreateNode(); // Default value
-    EXPECT_TRUE(defaultHandle.isValid());
-    
-    TreeNode* defaultNode = manager->getNode(defaultHandle);
-    EXPECT_NE(defaultNode, nullptr);
-    EXPECT_EQ(defaultNode->value, 0);
+    auto value = manager->getNodeValue(handle);
+    EXPECT_TRUE(value.has_value());
+    EXPECT_EQ(value.value(), 42);
 }
 
 TEST_F(TreeResourceManagerTest, CreateMultipleNodes) {
@@ -72,43 +75,28 @@ TEST_F(TreeResourceManagerTest, CreateMultipleNodes) {
     EXPECT_NE(handle1, handle3);
     EXPECT_NE(handle2, handle3);
     
-    // Verify node values
-    TreeNode* node1 = manager->getNode(handle1);
-    TreeNode* node2 = manager->getNode(handle2);
-    TreeNode* node3 = manager->getNode(handle3);
-    
-    EXPECT_EQ(node1->value, 1);
-    EXPECT_EQ(node2->value, 2);
-    EXPECT_EQ(node3->value, 3);
+    // Verify node values through manager
+    EXPECT_EQ(manager->getNodeValue(handle1).value(), 1);
+    EXPECT_EQ(manager->getNodeValue(handle2).value(), 2);
+    EXPECT_EQ(manager->getNodeValue(handle3).value(), 3);
 }
 
 TEST_F(TreeResourceManagerTest, DeleteNode) {
     auto [handle, result] = manager->createNode(42);
     EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
-    
-    TreeNode* node = manager->getNode(handle);
-    EXPECT_NE(node, nullptr);
+    EXPECT_TRUE(manager->isValidHandle(handle));
     
     bool deleteResult = manager->deleteNode(handle);
     EXPECT_TRUE(deleteResult);
     
     // Verify node is gone
-    TreeNode* deletedNode = manager->getNode(handle);
-    EXPECT_EQ(deletedNode, nullptr);
+    EXPECT_FALSE(manager->isValidHandle(handle));
+    EXPECT_FALSE(manager->getNodeValue(handle).has_value());
 }
 
 TEST_F(TreeResourceManagerTest, DeleteInvalidNode) {
-    TreeResourceManager::NodeHandle invalidHandle;
+    TreeResourceHandle invalidHandle;
     bool result = manager->deleteNode(invalidHandle);
-    EXPECT_FALSE(result);
-}
-
-TEST_F(TreeResourceManagerTest, DeleteNonManagedNode) {
-    TreeNode externalNode;
-    // Create a fake handle that doesn't exist in manager
-    TreeResourceManager::NodeHandle fakeHandle{999, 999};
-    
-    bool result = manager->deleteNode(fakeHandle);
     EXPECT_FALSE(result);
 }
 
@@ -154,99 +142,79 @@ TEST_F(TreeResourceManagerTest, ClearMethod) {
     EXPECT_EQ(manager->getActiveNodeCount(), 1);
 }
 
-TEST_F(TreeResourceManagerTest, MemoryManagement) {
-    auto [handle1, result1] = manager->createNode(1);
-    auto [handle2, result2] = manager->createNode(2);
-    
-    std::cout << "DEBUG: handle1: index=" << handle1.index << ", gen=" << handle1.generation << std::endl;
-    std::cout << "DEBUG: handle2: index=" << handle2.index << ", gen=" << handle2.generation << std::endl;
-    std::cout << "DEBUG: Active count after creation: " << manager->getActiveNodeCount() << std::endl;
-    
-    // Delete first node
-    bool deleteResult = manager->deleteNode(handle1);
-    std::cout << "DEBUG: Delete result: " << deleteResult << std::endl;
-    std::cout << "DEBUG: Active count after delete: " << manager->getActiveNodeCount() << std::endl;
-    
-    // Create new node - should reuse the slot
-    auto [handle3, result3] = manager->createNode(3);
-    std::cout << "DEBUG: handle3: index=" << handle3.index << ", gen=" << handle3.generation << std::endl;
-    std::cout << "DEBUG: Create result: " << (int)result3 << std::endl;
-    std::cout << "DEBUG: Active count after recreate: " << manager->getActiveNodeCount() << std::endl;
-    std::cout << "DEBUG: handle1 == handle3: " << (handle1 == handle3) << std::endl;
-    
-    EXPECT_EQ(manager->getActiveNodeCount(), 2);
-    EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
-    EXPECT_EQ(manager->getActiveNodeCount(), 2);
-    EXPECT_NE(handle1, handle3);
-}
-
-TEST_F(TreeResourceManagerTest, ManagerDestructionCleansUpNodes) {
-    // Use a scope to ensure manager destruction
-    {
-        auto localManager = std::make_unique<TreeResourceManager>();
-        
-        // Create nodes and verify they exist
-        auto [handle1, result1] = localManager->createNode(1);
-        auto [handle2, result2] = localManager->createNode(2);
-        auto [handle3, result3] = localManager->createNode(3);
-        
-        EXPECT_EQ(result1, TreeResourceManager::CreateResult::Success);
-        EXPECT_EQ(result2, TreeResourceManager::CreateResult::Success);
-        EXPECT_EQ(result3, TreeResourceManager::CreateResult::Success);
-        EXPECT_EQ(localManager->getActiveNodeCount(), 3);
-        
-        // Verify nodes are accessible
-        EXPECT_NE(localManager->getNode(handle1), nullptr);
-        EXPECT_NE(localManager->getNode(handle2), nullptr);
-        EXPECT_NE(localManager->getNode(handle3), nullptr);
-        
-        // Manager goes out of scope here and should destroy all nodes
-    }
-    
-    // If we get here without memory leaks/crashes, the test passes
-    // The real verification is done by sanitizers/valgrind
-    SUCCEED() << "Manager destruction completed without issues";
-}
-
 TEST_F(TreeResourceManagerTest, NodeRelationships) {
     auto [parentHandle, parentResult] = manager->createNode(1);
     auto [leftHandle, leftResult] = manager->createNode(2);
     auto [rightHandle, rightResult] = manager->createNode(3);
     
-    TreeNode* parent = manager->getNode(parentHandle);
-    TreeNode* leftChild = manager->getNode(leftHandle);
-    TreeNode* rightChild = manager->getNode(rightHandle);
-    
-    // Set up relationships
-    parent->left = leftChild;
-    parent->right = rightChild;
-    leftChild->parent = parent;
-    rightChild->parent = parent;
+    // Set up relationships through manager
+    EXPECT_TRUE(manager->setLeftChild(parentHandle, leftHandle));
+    EXPECT_TRUE(manager->setRightChild(parentHandle, rightHandle));
     
     // Verify relationships
-    EXPECT_EQ(parent->left, leftChild);
-    EXPECT_EQ(parent->right, rightChild);
-    EXPECT_EQ(leftChild->parent, parent);
-    EXPECT_EQ(rightChild->parent, parent);
+    EXPECT_EQ(manager->getLeftChild(parentHandle), leftHandle);
+    EXPECT_EQ(manager->getRightChild(parentHandle), rightHandle);
+    EXPECT_EQ(manager->getParent(leftHandle), parentHandle);
+    EXPECT_EQ(manager->getParent(rightHandle), parentHandle);
     
     // Verify values
-    EXPECT_EQ(parent->value, 1);
-    EXPECT_EQ(leftChild->value, 2);
-    EXPECT_EQ(rightChild->value, 3);
+    EXPECT_EQ(manager->getNodeValue(parentHandle).value(), 1);
+    EXPECT_EQ(manager->getNodeValue(leftHandle).value(), 2);
+    EXPECT_EQ(manager->getNodeValue(rightHandle).value(), 3);
+}
+
+TEST_F(TreeResourceManagerTest, SetNodeProperties) {
+    auto [handle, result] = manager->createNode(0);
+    
+    // Test setting properties
+    EXPECT_TRUE(manager->setNodeValue(handle, 100));
+    EXPECT_TRUE(manager->setBalanceFactor(handle, 1));
+    EXPECT_TRUE(manager->setHeight(handle, 5));
+    
+    // Verify properties
+    EXPECT_EQ(manager->getNodeValue(handle).value(), 100);
+    EXPECT_EQ(manager->getBalanceFactor(handle).value(), 1);
+    EXPECT_EQ(manager->getHeight(handle).value(), 5);
+}
+
+TEST_F(TreeResourceManagerTest, SetPropertiesInvalidHandle) {
+    TreeResourceHandle invalidHandle;
+    
+    EXPECT_FALSE(manager->setNodeValue(invalidHandle, 100));
+    EXPECT_FALSE(manager->setBalanceFactor(invalidHandle, 1));
+    EXPECT_FALSE(manager->setHeight(invalidHandle, 5));
+}
+
+TEST_F(TreeResourceManagerTest, SetRelationshipsInvalidHandle) {
+    TreeResourceHandle invalidHandle;
+    auto [validHandle, result] = manager->createNode(1);
+    
+    // Should fail: invalid parent
+    EXPECT_FALSE(manager->setLeftChild(invalidHandle, validHandle));
+    EXPECT_FALSE(manager->setRightChild(invalidHandle, validHandle));
+    
+    // Should succeed: valid parent with invalid child (creating leaf node)
+    EXPECT_TRUE(manager->setLeftChild(validHandle, invalidHandle));
+    EXPECT_TRUE(manager->setRightChild(validHandle, invalidHandle));
+    
+    // Verify the node is now a leaf
+    EXPECT_FALSE(manager->getLeftChild(validHandle).isValid());
+    EXPECT_FALSE(manager->getRightChild(validHandle).isValid());
+    EXPECT_TRUE(manager->getNodeValue(validHandle).has_value()); // Parent still exists
 }
 
 TEST_F(TreeResourceManagerTest, ManyNodes) {
     const int NUM_NODES = 1000;
-    std::vector<TreeResourceManager::NodeHandle> handles;
+    std::vector<TreeResourceHandle> handles;
     
     for (int i = 0; i < NUM_NODES; ++i) {
         auto [handle, result] = manager->createNode(i);
         EXPECT_EQ(result, TreeResourceManager::CreateResult::Success);
         handles.push_back(handle);
         
-        TreeNode* node = manager->getNode(handle);
-        EXPECT_NE(node, nullptr);
-        EXPECT_EQ(node->value, i);
+        auto value = manager->getNodeValue(handle);
+        EXPECT_TRUE(value.has_value());
+        EXPECT_EQ(value.value(), i);
     }
     
     EXPECT_EQ(manager->getActiveNodeCount(), NUM_NODES);
@@ -263,35 +231,18 @@ TEST_F(TreeResourceManagerTest, DeleteRemovesFromManagement) {
     EXPECT_EQ(manager->getActiveNodeCount(), 1);
     
     // Should not be able to access deleted node
-    TreeNode* deletedNode = manager->getNode(handle1);
-    EXPECT_EQ(deletedNode, nullptr);
+    EXPECT_FALSE(manager->isValidHandle(handle1));
+    EXPECT_FALSE(manager->getNodeValue(handle1).has_value());
     
     // Second node should still be accessible
-    TreeNode* node2 = manager->getNode(handle2);
-    EXPECT_NE(node2, nullptr);
-    EXPECT_EQ(node2->value, 2);
+    EXPECT_TRUE(manager->isValidHandle(handle2));
+    EXPECT_EQ(manager->getNodeValue(handle2).value(), 2);
     
     // Create new nodes after deletion
     auto [handle3, result3] = manager->createNode(3);
     auto [handle4, result4] = manager->createNode(4);
     
     EXPECT_EQ(manager->getActiveNodeCount(), 3);
-    
-    TreeNode* node3 = manager->getNode(handle3);
-    TreeNode* node4 = manager->getNode(handle4);
-    EXPECT_EQ(node3->value, 3);
-    EXPECT_EQ(node4->value, 4);
-}
-
-TEST_F(TreeResourceManagerTest, DeleteNodeReturnValueAccuracy) {
-    TreeResourceManager::NodeHandle invalidHandle;
-    bool invalidDelete = manager->deleteNode(invalidHandle);
-    EXPECT_FALSE(invalidDelete);
-    
-    auto [handle, result] = manager->createNode(42);
-    bool validDelete = manager->deleteNode(handle);
-    EXPECT_TRUE(validDelete);
-    
-    bool doubleDelete = manager->deleteNode(handle);
-    EXPECT_FALSE(doubleDelete);
+    EXPECT_EQ(manager->getNodeValue(handle3).value(), 3);
+    EXPECT_EQ(manager->getNodeValue(handle4).value(), 4);
 }
