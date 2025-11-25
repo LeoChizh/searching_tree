@@ -1,7 +1,6 @@
 #pragma once
-#include "TreeNode.hpp"
-#include "TreeResourceHandle.hpp"
-#include "TreeResourceManager.hpp"
+#include "TreeNodePool.hpp"
+#include "TreeStructure.hpp"
 #include <queue>
 #include <utility>
 
@@ -10,7 +9,7 @@ public:
     using NodeHandle = TreeResourceHandle;
     
     // 1. Constructor
-    explicit AVLTree() : manager(), root() {}
+    explicit AVLTree() : pool(), root() {}
     
     // 2. Destructor
     ~AVLTree() {
@@ -18,7 +17,7 @@ public:
     }
     
     // 3. Copy Constructor - Create new tree and insert all values
-    AVLTree(const AVLTree& other) : manager(), root() {
+    AVLTree(const AVLTree& other) : pool(), root() {
         copyAllValues(other);
     }
     
@@ -33,7 +32,7 @@ public:
     
     // 5. Move Operations
     AVLTree(AVLTree&& other) noexcept 
-        : manager(std::move(other.manager)), 
+        : pool(std::move(other.pool)), 
           root(std::move(other.root)) {
         other.root = NodeHandle();
     }
@@ -41,7 +40,7 @@ public:
     AVLTree& operator=(AVLTree&& other) noexcept {
         if (this != &other) {
             clear();
-            manager = std::move(other.manager);
+            pool = std::move(other.pool);
             root = std::move(other.root);
             other.root = NodeHandle();
         }
@@ -50,7 +49,7 @@ public:
     
     void swap(AVLTree& other) noexcept {
         using std::swap;
-        swap(manager, other.manager);
+        swap(pool, other.pool);
         swap(root, other.root);
     }
     
@@ -60,6 +59,7 @@ public:
             clearSubtree(root);
             root = NodeHandle();
         }
+        pool.clear(); // Clear the entire pool
     }
     
     bool empty() const { 
@@ -98,7 +98,7 @@ public:
     }
 
 private:
-    TreeResourceManager manager;
+    TreeNodePool pool;
     NodeHandle root;
     
     // Level-order copy: Create new tree by inserting all values
@@ -112,35 +112,22 @@ private:
             NodeHandle current = q.front();
             q.pop();
             
-            const TreeNode* node = other.manager.getNode(current);
-            if (!node) continue;
+            // Use TreeStructure to get node value
+            auto value = TreeStructure::getNodeValue(other.pool, current);
+            if (!value.has_value()) continue;
             
             // Insert value into this tree
-            insert(node->value);
+            insert(value.value());
             
-            // Add children to queue - FIX: use hasLeft()/hasRight() and get node pointers
-            if (node->hasLeft()) {
-                // Since TreeNode uses raw pointers, we need to find the handle for left child
-                // This is the tricky part - we need to search for which handle points to node->left
-                for (size_t i = 0; i < other.manager.getTotalNodeCount(); ++i) {
-                    NodeHandle potentialHandle{static_cast<uint32_t>(i), 1};
-                    TreeNode* potentialNode = other.manager.getNode(potentialHandle);
-                    if (potentialNode == node->left) {
-                        q.push(potentialHandle);
-                        break;
-                    }
-                }
+            // Add children to queue using TreeStructure
+            NodeHandle leftChild = TreeStructure::getLeftChild(other.pool, current);
+            if (leftChild.isValid()) {
+                q.push(leftChild);
             }
-            if (node->hasRight()) {
-                // Same for right child
-                for (size_t i = 0; i < other.manager.getTotalNodeCount(); ++i) {
-                    NodeHandle potentialHandle{static_cast<uint32_t>(i), 1};
-                    TreeNode* potentialNode = other.manager.getNode(potentialHandle);
-                    if (potentialNode == node->right) {
-                        q.push(potentialHandle);
-                        break;
-                    }
-                }
+            
+            NodeHandle rightChild = TreeStructure::getRightChild(other.pool, current);
+            if (rightChild.isValid()) {
+                q.push(rightChild);
             }
         }
     }
@@ -149,15 +136,234 @@ private:
     void clearSubtree(NodeHandle nodeHandle) {
         if (!nodeHandle.isValid()) return;
         
-        TreeNode* node = manager.getNode(nodeHandle);
-        if (!node) return;
+        // Get children first (before deletion)
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
         
-        // Clear children first
-        clearSubtree(node->left);
-        clearSubtree(node->right);
+        // Recursively clear children
+        clearSubtree(leftChild);
+        clearSubtree(rightChild);
         
         // Delete this node
-        manager.deleteNode(nodeHandle);
+        pool.deleteNode(nodeHandle);
+    }
+    
+    // AVL Tree operations - using TreeStructure
+    std::pair<NodeHandle, bool> insertNode(NodeHandle nodeHandle, int value) {
+        if (!nodeHandle.isValid()) {
+            // Create new node
+            NodeHandle newNode = pool.tryCreateNode();
+            if (!newNode.isValid()) {
+                return {NodeHandle(), false};
+            }
+            TreeStructure::setNodeValue(pool, newNode, value);
+            return {newNode, true};
+        }
+        
+        // Get current node value
+        auto nodeValue = TreeStructure::getNodeValue(pool, nodeHandle);
+        if (!nodeValue.has_value()) {
+            return {NodeHandle(), false};
+        }
+        
+        if (value < nodeValue.value()) {
+            NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+            auto [newLeft, inserted] = insertNode(leftChild, value);
+            if (inserted) {
+                TreeStructure::setLeftChild(pool, nodeHandle, newLeft);
+                // Update height and balance
+                updateNode(nodeHandle);
+                return {balance(nodeHandle), true};
+            }
+        } else if (value > nodeValue.value()) {
+            NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+            auto [newRight, inserted] = insertNode(rightChild, value);
+            if (inserted) {
+                TreeStructure::setRightChild(pool, nodeHandle, newRight);
+                // Update height and balance
+                updateNode(nodeHandle);
+                return {balance(nodeHandle), true};
+            }
+        }
+        
+        // Value already exists
+        return {nodeHandle, false};
+    }
+    
+    std::pair<NodeHandle, bool> removeNode(NodeHandle nodeHandle, int value) {
+        if (!nodeHandle.isValid()) {
+            return {NodeHandle(), false};
+        }
+        
+        auto nodeValue = TreeStructure::getNodeValue(pool, nodeHandle);
+        if (!nodeValue.has_value()) {
+            return {NodeHandle(), false};
+        }
+        
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+        
+        if (value < nodeValue.value()) {
+            auto [newLeft, removed] = removeNode(leftChild, value);
+            if (removed) {
+                TreeStructure::setLeftChild(pool, nodeHandle, newLeft);
+                updateNode(nodeHandle);
+                return {balance(nodeHandle), true};
+            }
+        } else if (value > nodeValue.value()) {
+            auto [newRight, removed] = removeNode(rightChild, value);
+            if (removed) {
+                TreeStructure::setRightChild(pool, nodeHandle, newRight);
+                updateNode(nodeHandle);
+                return {balance(nodeHandle), true};
+            }
+        } else {
+            // Node to delete found
+            if (!leftChild.isValid() || !rightChild.isValid()) {
+                // Zero or one child
+                NodeHandle child = leftChild.isValid() ? leftChild : rightChild;
+                pool.deleteNode(nodeHandle);
+                return {child, true};
+            } else {
+                // Two children: find inorder successor
+                NodeHandle successor = findMin(rightChild);
+                auto successorValue = TreeStructure::getNodeValue(pool, successor);
+                if (!successorValue.has_value()) {
+                    return {NodeHandle(), false};
+                }
+                
+                // Copy successor's value
+                TreeStructure::setNodeValue(pool, nodeHandle, successorValue.value());
+                
+                // Delete the successor
+                auto [newRight, _] = removeNode(rightChild, successorValue.value());
+                TreeStructure::setRightChild(pool, nodeHandle, newRight);
+                
+                updateNode(nodeHandle);
+                return {balance(nodeHandle), true};
+            }
+        }
+        
+        return {nodeHandle, false};
+    }
+    
+    NodeHandle findNode(NodeHandle nodeHandle, int value) const {
+        if (!nodeHandle.isValid()) return NodeHandle();
+        
+        auto nodeValue = TreeStructure::getNodeValue(pool, nodeHandle);
+        if (!nodeValue.has_value()) return NodeHandle();
+        
+        if (value < nodeValue.value()) {
+            return findNode(TreeStructure::getLeftChild(pool, nodeHandle), value);
+        } else if (value > nodeValue.value()) {
+            return findNode(TreeStructure::getRightChild(pool, nodeHandle), value);
+        } else {
+            return nodeHandle; // Found
+        }
+    }
+    
+    NodeHandle findMin(NodeHandle nodeHandle) const {
+        if (!nodeHandle.isValid()) return NodeHandle();
+        
+        NodeHandle current = nodeHandle;
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, current);
+        
+        while (leftChild.isValid()) {
+            current = leftChild;
+            leftChild = TreeStructure::getLeftChild(pool, current);
+        }
+        
+        return current;
+    }
+    
+    // AVL Balancing operations
+    void updateNode(NodeHandle nodeHandle) {
+        if (!nodeHandle.isValid()) return;
+        
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+        
+        int leftHeight = calculateHeight(leftChild);
+        int rightHeight = calculateHeight(rightChild);
+        
+        TreeStructure::setHeight(pool, nodeHandle, 1 + std::max(leftHeight, rightHeight));
+        TreeStructure::setBalanceFactor(pool, nodeHandle, leftHeight - rightHeight);
+    }
+    
+    NodeHandle balance(NodeHandle nodeHandle) {
+        auto balanceFactor = TreeStructure::getBalanceFactor(pool, nodeHandle);
+        if (!balanceFactor.has_value()) return nodeHandle;
+        
+        // Left heavy
+        if (balanceFactor.value() > 1) {
+            NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+            auto leftBalance = TreeStructure::getBalanceFactor(pool, leftChild);
+            if (leftBalance.has_value() && leftBalance.value() < 0) {
+                // Left-Right case
+                NodeHandle newLeft = rotateLeft(leftChild);
+                TreeStructure::setLeftChild(pool, nodeHandle, newLeft);
+            }
+            return rotateRight(nodeHandle);
+        }
+        // Right heavy
+        else if (balanceFactor.value() < -1) {
+            NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+            auto rightBalance = TreeStructure::getBalanceFactor(pool, rightChild);
+            if (rightBalance.has_value() && rightBalance.value() > 0) {
+                // Right-Left case
+                NodeHandle newRight = rotateRight(rightChild);
+                TreeStructure::setRightChild(pool, nodeHandle, newRight);
+            }
+            return rotateLeft(nodeHandle);
+        }
+        
+        return nodeHandle;
+    }
+    
+    NodeHandle rotateLeft(NodeHandle nodeHandle) {
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+        if (!rightChild.isValid()) return nodeHandle;
+        
+        NodeHandle rightLeftChild = TreeStructure::getLeftChild(pool, rightChild);
+        
+        TreeStructure::setLeftChild(pool, rightChild, nodeHandle);
+        TreeStructure::setRightChild(pool, nodeHandle, rightLeftChild);
+        
+        updateNode(nodeHandle);
+        updateNode(rightChild);
+        
+        return rightChild;
+    }
+    
+    NodeHandle rotateRight(NodeHandle nodeHandle) {
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+        if (!leftChild.isValid()) return nodeHandle;
+        
+        NodeHandle leftRightChild = TreeStructure::getRightChild(pool, leftChild);
+        
+        TreeStructure::setRightChild(pool, leftChild, nodeHandle);
+        TreeStructure::setLeftChild(pool, nodeHandle, leftRightChild);
+        
+        updateNode(nodeHandle);
+        updateNode(leftChild);
+        
+        return leftChild;
+    }
+    
+    int calculateHeight(NodeHandle nodeHandle) const {
+        if (!nodeHandle.isValid()) return -1;
+        
+        auto height = TreeStructure::getHeight(pool, nodeHandle);
+        return height.has_value() ? height.value() : -1;
+    }
+    
+    size_t countNodes(NodeHandle nodeHandle) const {
+        if (!nodeHandle.isValid()) return 0;
+        
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, nodeHandle);
+        NodeHandle rightChild = TreeStructure::getRightChild(pool, nodeHandle);
+        
+        return 1 + countNodes(leftChild) + countNodes(rightChild);
     }
     
     // Prevent dangerous operations

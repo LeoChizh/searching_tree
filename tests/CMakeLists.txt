@@ -10,6 +10,7 @@ set(TEST_SOURCES
     test_commands.cpp
     test_treeNodePool.cpp
     test_treeStructure.cpp
+    test_AVLTree.cpp
     # Add new tests here manually
 )
 
