@@ -1,21 +1,19 @@
 #pragma once
+#include "TreeResourceHandle.hpp"
 
-// Simple data container with minimal, const helpers
+// TreeNode using handles instead of raw pointers
 struct TreeNode {
-    TreeNode* parent = nullptr;
-    TreeNode* left = nullptr;
-    TreeNode* right = nullptr;
+    TreeResourceHandle parent;
+    TreeResourceHandle left;
+    TreeResourceHandle right;
     int value = 0;
-    int balancer = 0;
+    int balanceFactor = 0;
+    int height = 0;
     
     TreeNode() = default;
-    TreeNode(TreeNode* p, TreeNode* l, TreeNode* r, int val) 
-        : parent(p), left(l), right(r), value(val) {}
     
-    // Only simple const queries about current state
-    bool isLeaf() const { return !left && !right; }
-    bool isRoot() const { return !parent; }
-    bool hasLeft() const { return left != nullptr; }
-    bool hasRight() const { return right != nullptr; }
-    
+    bool isLeaf() const { return !left.isValid() && !right.isValid(); }
+    bool isRoot() const { return !parent.isValid(); }
+    bool hasLeft() const { return left.isValid(); }
+    bool hasRight() const { return right.isValid(); }
 };
