@@ -13,92 +13,23 @@ public:
 
     using NodeHandle = TreeResourceHandle;
 
-    explicit TreeNodePool(size_t maxNodes = 1000000) 
-        : maxNodes(maxNodes) 
-    {
-        nodes.reserve(std::min(maxNodes, size_t(1000)));
-    }
-
-    ~TreeNodePool() {
-        clear();
-    }
+    explicit TreeNodePool(size_t maxNodes = 1000000);
+    ~TreeNodePool();
 
     // Core memory management
-    std::pair<NodeHandle, CreateResult> createNode() noexcept {
-        if (getActiveNodeCount() >= maxNodes) {
-            return {NodeHandle{}, CreateResult::TooManyNodes};
-        }
-        
-        size_t index;
-        NodeEntry* entry = nullptr;
-        
-        if (!freeIndices.empty()) {
-            index = freeIndices.front();
-            freeIndices.pop();
-            entry = &nodes[index];
-            entry->generation++;
-        } else {
-            index = nodes.size();
-            nodes.push_back(NodeEntry{});
-            entry = &nodes[index];
-            entry->generation = 1;
-        }
-        
-        entry->node = TreeNode{};
-        entry->isActive = true;
-        
-        NodeHandle handle{index, entry->generation};
-        return {handle, CreateResult::Success};
-    }
-
-    NodeHandle tryCreateNode() noexcept {
-        auto [handle, result] = createNode();
-        return handle;
-    }
-    
-    // Fast, unsafe access - caller handles validation
-    TreeNode* accessNode(NodeHandle handle) noexcept {
-        if (!handle.isValid() || handle.index >= nodes.size()) {
-            return nullptr;
-        }
-        
-        auto& entry = nodes[handle.index];
-        if (!entry.isActive || entry.generation != handle.generation) {
-            return nullptr;
-        }
-        
-        return &entry.node;
-    }
-    
-    const TreeNode* accessNode(NodeHandle handle) const noexcept {
-        return const_cast<TreeNodePool*>(this)->accessNode(handle);
-    }
-    
-    bool deleteNode(NodeHandle handle) noexcept {
-        TreeNode* node = accessNode(handle);
-        if (!node) return false;
-        
-        *node = TreeNode{};  // Reset node data
-        nodes[handle.index].isActive = false;
-        freeIndices.push(handle.index);
-        
-        return true;
-    }
-    
-    bool isValidHandle(NodeHandle handle) const noexcept {
-        return accessNode(handle) != nullptr;
-    }
-    
-    void clear() noexcept {
-        nodes.clear();
-        while (!freeIndices.empty()) freeIndices.pop();
-    }
+    std::pair<NodeHandle, CreateResult> createNode() noexcept;
+    NodeHandle tryCreateNode() noexcept;
+    TreeNode* accessNode(NodeHandle handle) noexcept;
+    const TreeNode* accessNode(NodeHandle handle) const noexcept;
+    bool deleteNode(NodeHandle handle) noexcept;
+    bool isValidHandle(NodeHandle handle) const noexcept;
+    void clear() noexcept;
     
     // Memory management info
-    size_t capacity() const noexcept { return maxNodes; }
-    size_t getTotalNodeCount() const noexcept { return nodes.size(); }
-    size_t getActiveNodeCount() const noexcept { return nodes.size() - freeIndices.size(); }
-    size_t getAvailableCapacity() const noexcept { return maxNodes - getActiveNodeCount(); }
+    size_t capacity() const noexcept;
+    size_t getTotalNodeCount() const noexcept;
+    size_t getActiveNodeCount() const noexcept;
+    size_t getAvailableCapacity() const noexcept;
 
     TreeNodePool(const TreeNodePool&) = delete;
     TreeNodePool& operator=(const TreeNodePool&) = delete;

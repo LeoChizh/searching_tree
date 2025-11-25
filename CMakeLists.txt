@@ -13,6 +13,8 @@ endif()
 # Create a library for your core functionality
 add_library(SearchingTreeLib
     src/CommandsParser.cpp
+    src/AVLTree.cpp
+    src/TreeNodePool.cpp
 )
 
 # Target include directories
