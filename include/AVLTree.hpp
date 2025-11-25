@@ -102,6 +102,13 @@ public:
         return visualizeSubtree(root, 0);
     }
 
+    std::optional<int> findNthSmallest(int n) const {
+        int count = 0;
+        return findNthSmallestSubtree(root, n, count);
+    }
+
+    
+
 private:
     TreeNodePool pool;
     NodeHandle root;
@@ -407,5 +414,26 @@ private:
         }
         
         return ss.str();
+    }
+
+    std::optional<int> findNthSmallestSubtree(NodeHandle node, int n, int& count) const {
+        if (!node.isValid()) return std::nullopt;
+        
+        // 1. Search left subtree first (smallest values)
+        auto leftResult = findNthSmallestSubtree(
+            TreeStructure::getLeftChild(pool, node), n, count);
+        if (leftResult.has_value()) {
+            return leftResult;
+        }
+        
+        // 2. Check current node
+        count++;
+        if (count == n) {
+            return TreeStructure::getNodeValue(pool, node);
+        }
+        
+        // 3. Search right subtree
+        return findNthSmallestSubtree(
+            TreeStructure::getRightChild(pool, node), n, count);
     }
 };

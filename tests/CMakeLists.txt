@@ -11,6 +11,7 @@ set(TEST_SOURCES
     test_treeNodePool.cpp
     test_treeStructure.cpp
     test_AVLTree.cpp
+    test_findingSmallest.cpp
     # Add new tests here manually
 )
 

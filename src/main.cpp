@@ -36,6 +36,13 @@ int main(){
 
     tree.insert(5);  // This might trigger a rotation
     std::cout << "After inserting 5:\n" << tree.visualize() << std::endl;
+
+    tree.remove(50);  // This might trigger a rotation
+    std::cout << "After removing 50:\n" << tree.visualize() << std::endl;
+
+    tree.remove(70);  // Remove the right child of root
+    std::cout << "After removing 70:\n" << tree.visualize() << std::endl;
+
     
     CommandsParser cmd;
     
