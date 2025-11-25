@@ -8,7 +8,8 @@ enable_testing()
 set(TEST_SOURCES
     test_treeNode.cpp
     test_commands.cpp
-    test_treeResourceManager.cpp
+    test_treeNodePool.cpp
+    test_treeStructure.cpp
     # Add new tests here manually
 )
 
