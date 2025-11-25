@@ -302,6 +302,21 @@ TEST_F(AVLTreeBenchmark, MixedOperationsBenchmark) {
     std::cout << "Ratio (AVL/set): " << (double)avl_duration.count() / set_duration.count() << std::endl;
 }
 
+TEST_F(AVLTreeBenchmark, MassiveScale) {
+    const int NUM_NODES = 1000000;  // 10x larger
+    
+    for (int i = 0; i < NUM_NODES; ++i) {
+        avl_tree->insert(i);
+    }
+    
+    auto start = std::chrono::high_resolution_clock::now();
+    [[maybe_unused]] auto result = avl_tree->findNthSmallest(500000);  // Middle element
+    auto end = std::chrono::high_resolution_clock::now();
+    
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    std::cout << "findNthSmallest on 1M nodes: " << duration.count() << " ns" << std::endl;
+}
+
 int main(int argc, char **argv) {
     ::testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
