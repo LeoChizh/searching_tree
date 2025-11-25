@@ -13,6 +13,8 @@ set(TEST_SOURCES
     test_AVLTree.cpp
     test_findingSmallest.cpp
     test_countSmallerThan.cpp
+    test_AVLStress.cpp
+    test_AVLBenchmark.cpp
     # Add new tests here manually
 )
 
@@ -34,3 +36,4 @@ foreach(test_source ${TEST_SOURCES})
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
     )
 endforeach()
+
