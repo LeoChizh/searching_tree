@@ -90,7 +90,7 @@ public:
     
     // For testing/debugging
     size_t size() const {
-        return countNodes(root);
+         return TreeStructure::getSubtreeSize(pool, root).value_or(0);
     }
     
     int getHeight() const {
@@ -102,14 +102,13 @@ public:
         return visualizeSubtree(root, 0);
     }
 
-    std::optional<int> findNthSmallest(int n) const {
-        int count = 0;
-        return findNthSmallestSubtree(root, n, count);
+    std::optional<int> findNthSmallest(size_t n) const {
+        if (n < 1 || n > size()) return std::nullopt;
+        return findNthSmallestSubtree(root, n);
     }
 
-    // Count how many nodes have values smaller than n
-    size_t countSmallerThan(int n) const {
-        return countSmallerThanSubtree(root, n);
+    size_t countSmallerThan(int target) const {
+        return countSmallerThanSubtree(root, target);
     }
   
 
@@ -314,6 +313,7 @@ private:
         
         TreeStructure::setHeight(pool, nodeHandle, 1 + std::max(leftHeight, rightHeight));
         TreeStructure::setBalanceFactor(pool, nodeHandle, leftHeight - rightHeight);
+        TreeStructure::updateSubtreeSize(pool, nodeHandle);
     }
     
     NodeHandle balance(NodeHandle nodeHandle) {
@@ -430,43 +430,45 @@ private:
         return ss.str();
     }
 
-    std::optional<int> findNthSmallestSubtree(NodeHandle node, int n, int& count) const {
+    std::optional<int> findNthSmallestSubtree(NodeHandle node, size_t n) const {
         if (!node.isValid()) return std::nullopt;
         
-        // 1. Search left subtree first (smallest values)
-        auto leftResult = findNthSmallestSubtree(
-            TreeStructure::getLeftChild(pool, node), n, count);
-        if (leftResult.has_value()) {
-            return leftResult;
-        }
+        // Get left subtree size using the stored value
+        NodeHandle leftChild = TreeStructure::getLeftChild(pool, node);
+        size_t left_size = TreeStructure::getSubtreeSize(pool, leftChild).value_or(0);
         
-        // 2. Check current node
-        count++;
-        if (count == n) {
+        if (n <= left_size) {
+            // nth smallest is in left subtree
+            return findNthSmallestSubtree(leftChild, n);
+        } else if (n == left_size + 1) {
+            // Current node is the nth smallest
             return TreeStructure::getNodeValue(pool, node);
+        } else {
+            // nth smallest is in right subtree
+            return findNthSmallestSubtree(
+                TreeStructure::getRightChild(pool, node), 
+                n - left_size - 1
+            );
         }
-        
-        // 3. Search right subtree
-        return findNthSmallestSubtree(
-            TreeStructure::getRightChild(pool, node), n, count);
     }
 
-    size_t countSmallerThanSubtree(NodeHandle node, int n) const {
+    size_t countSmallerThanSubtree(NodeHandle node, int target) const {
         if (!node.isValid()) return 0;
         
-        auto value = TreeStructure::getNodeValue(pool, node);
-        if (!value.has_value()) return 0;
+        auto current_value = TreeStructure::getNodeValue(pool, node);
+        if (!current_value.has_value()) return 0;
         
-        NodeHandle leftChild = TreeStructure::getLeftChild(pool, node);
-        NodeHandle rightChild = TreeStructure::getRightChild(pool, node);
-        
-        if (value.value() >= n) {
-            // Current node >= n, so only check left subtree
-            return countSmallerThanSubtree(leftChild, n);
+        if (current_value.value() >= target) {
+            // All smaller values are in left subtree
+            return countSmallerThanSubtree(TreeStructure::getLeftChild(pool, node), target);
         } else {
-            // Current node < n, so count this node + all in left subtree + check right subtree
-            return 1 + countSmallerThanSubtree(leftChild, n) + countSmallerThanSubtree(rightChild, n);
+            // Current node + all in left subtree + some in right subtree
+            NodeHandle leftChild = TreeStructure::getLeftChild(pool, node);
+            size_t left_size = TreeStructure::getSubtreeSize(pool, leftChild).value_or(0);
+            return left_size + 1 + countSmallerThanSubtree(TreeStructure::getRightChild(pool, node), target);
         }
     }
+
+   
 
 };

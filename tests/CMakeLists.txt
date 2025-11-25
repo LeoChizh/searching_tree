@@ -15,6 +15,7 @@ set(TEST_SOURCES
     test_countSmallerThan.cpp
     test_AVLStress.cpp
     test_AVLBenchmark.cpp
+    test_subtree_size.cpp
     # Add new tests here manually
 )
 

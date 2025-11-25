@@ -111,4 +111,49 @@ namespace TreeStructure {
         const TreeNode* nodePtr = pool.accessNode(node);
         return nodePtr ? std::optional<int>{nodePtr->height} : std::nullopt;
     }
+
+        // Subtree size operations - ADD THESE
+    inline bool setSubtreeSize(TreeNodePool& pool, NodeHandle node, size_t size) noexcept {
+        TreeNode* nodePtr = pool.accessNode(node);
+        if (!nodePtr) return false;
+        nodePtr->subtree_size = size;
+        return true;
+    }
+    
+    inline std::optional<size_t> getSubtreeSize(const TreeNodePool& pool, NodeHandle node) noexcept {
+        const TreeNode* nodePtr = pool.accessNode(node);
+        return nodePtr ? std::optional<size_t>{nodePtr->subtree_size} : std::nullopt;
+    }
+    
+    // Helper function to update subtree size based on children
+    inline bool updateSubtreeSize(TreeNodePool& pool, NodeHandle node) noexcept {
+        if (!node.isValid()) return false;
+        
+        TreeNode* nodePtr = pool.accessNode(node);
+        if (!nodePtr) return false;
+        
+        size_t left_size = 0;
+        if (nodePtr->left.isValid()) {
+            auto left_size_opt = getSubtreeSize(pool, nodePtr->left);
+            left_size = left_size_opt.value_or(0);
+        }
+        
+        size_t right_size = 0;
+        if (nodePtr->right.isValid()) {
+            auto right_size_opt = getSubtreeSize(pool, nodePtr->right);
+            right_size = right_size_opt.value_or(0);
+        }
+        
+        nodePtr->subtree_size = 1 + left_size + right_size;
+        return true;
+    }
+    
+    // Helper function to update subtree sizes along a path to root
+    inline void updateSubtreeSizesToRoot(TreeNodePool& pool, NodeHandle startNode) noexcept {
+        NodeHandle current = startNode;
+        while (current.isValid()) {
+            updateSubtreeSize(pool, current);
+            current = getParent(pool, current);
+        }
+    }
 }

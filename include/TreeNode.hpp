@@ -9,6 +9,7 @@ struct TreeNode {
     int value = 0;
     int balanceFactor = 0;
     int height = 0;
+    size_t subtree_size = 1;  
     
     TreeNode() = default;
     
