@@ -12,14 +12,14 @@ protected:
 };
 
 TEST_F(AVLTreeIntegrationTest, ErrorHandling_ValidCommandsStillExecute) {
-    std::istringstream input("invalid\nk 5 10\nm 2");
+    std::istringstream input("invalid k 5 10 m 2");
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Has parsing error for "invalid"
-    EXPECT_EQ(output.str(), "10\n");  // 2nd smallest of [5,10] is 10
+    EXPECT_EQ(output.str(), "10");  // 2nd smallest of [5,10] is 10 (no newline)
     EXPECT_TRUE(errors.str().find("Unknown token: invalid") != std::string::npos);
 }
 
@@ -31,19 +31,19 @@ TEST_F(AVLTreeIntegrationTest, ErrorHandling_CommandWithoutValues) {
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Has execution error!
-    EXPECT_EQ(output.str(), "\n");  // But still outputs empty line
+    EXPECT_EQ(output.str(), "");  // Empty output (no empty line)
     EXPECT_TRUE(errors.str().find("find_min requires exactly one value, got 0") != std::string::npos);
 }
 
 TEST_F(AVLTreeIntegrationTest, ErrorHandling_MixedValidAndInvalid) {
-    std::istringstream input("k 5\ninvalid\nm 1");
+    std::istringstream input("k 5 invalid m 1");
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Has parsing error for "invalid"
-    EXPECT_EQ(output.str(), "5\n");  // 1st smallest of [5] is 5
+    EXPECT_EQ(output.str(), "5");  // 1st smallest of [5] is 5 (no newline)
     EXPECT_TRUE(errors.str().find("Unknown token: invalid") != std::string::npos);
 }
 
@@ -67,22 +67,21 @@ TEST_F(AVLTreeIntegrationTest, EmptyNumberSmallerCommand) {
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Has execution error!
-    EXPECT_EQ(output.str(), "0\n");  // But still outputs 0
+    EXPECT_EQ(output.str(), "");  // No output as no valid command
     EXPECT_TRUE(errors.str().find("number_smaller requires exactly one value, got 0") != std::string::npos);
 }
 
 TEST_F(AVLTreeIntegrationTest, MultipleValuesForFindMin) {
-    std::istringstream input("k 5 10 15\nm 2 99");  // m has extra values
+    std::istringstream input("k 5 10 15 m 2 99");  // m has extra values
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Has execution error!
-    EXPECT_EQ(output.str(), "\n");  // No output the result
+    EXPECT_EQ(output.str(), "");  // Empty output (no empty line)
     EXPECT_TRUE(errors.str().find("find_min requires exactly one value, got 2") != std::string::npos);
 }
-
 
 TEST_F(AVLTreeIntegrationTest, ValidAddCommand) {
     std::istringstream input("k 5 10 15");
@@ -96,35 +95,33 @@ TEST_F(AVLTreeIntegrationTest, ValidAddCommand) {
     EXPECT_TRUE(errors.str().empty());  // No errors
 }
 
-
-
 TEST_F(AVLTreeIntegrationTest, MultipleValuesForNumberSmaller) {
-    std::istringstream input("k 5 10 15\nn 10 99");  // n has extra values - should error
+    std::istringstream input("k 5 10 15 n 10 99");  // n has extra values - should error
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_GT(result, 0);  // Should have execution error
-    EXPECT_EQ(output.str(), "0\n");  // 0 due to error (not "2\n")
+    EXPECT_EQ(output.str(), "");  // No valid command
     EXPECT_TRUE(errors.str().find("number_smaller requires exactly one value") != std::string::npos);
 }
 
 // Add more tests for valid scenarios to replace the "bad command" tests
 TEST_F(AVLTreeIntegrationTest, ValidMultipleAddCommands) {
-    std::istringstream input("k 5 10\nk 15 20\nm 3\nn 18");
+    std::istringstream input("k 5 10 k 15 20 m 3 n 18");
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(output.str(), "15\n3\n"); // 3rd smallest is 15, 3 elements smaller than 18
+    EXPECT_EQ(output.str(), "15 3"); // 3rd smallest is 15, 3 elements smaller than 18 (space-separated)
     EXPECT_TRUE(errors.str().empty());
 }
 
 TEST_F(AVLTreeIntegrationTest, ValidComplexScenario) {
-    std::istringstream input("k 50 30 70 20 40 60 80\nm 1\nm 4\nm 7\nn 25\nn 55\nn 100");
+    std::istringstream input("k 50 30 70 20 40 60 80 m 1 m 4 m 7 n 25 n 55 n 100");
     std::ostringstream output;
     std::ostringstream errors;
     
@@ -138,43 +135,67 @@ TEST_F(AVLTreeIntegrationTest, ValidComplexScenario) {
     // n 25 -> elements smaller than 25: only 20 = 1 element
     // n 55 -> elements smaller than 55: 20, 30, 40, 50 = 4 elements
     // n 100 -> elements smaller than 100: all 7 elements
-    EXPECT_EQ(output.str(), "20\n50\n80\n1\n4\n7\n");
+    EXPECT_EQ(output.str(), "20 50 80 1 4 7"); // Space-separated results
     EXPECT_TRUE(errors.str().empty());
 }
 
-
 TEST_F(AVLTreeIntegrationTest, ValidNegativeNumbers) {
-    std::istringstream input("k -5 0 5\nm 2\nn -3\nn 3");
+    std::istringstream input("k -5 0 5 m 2 n -3 n 3");
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(output.str(), "0\n1\n2\n"); // 2nd smallest is 0, 1 element < -3, 2 elements < 3
+    EXPECT_EQ(output.str(), "0 1 2"); // 2nd smallest is 0, 1 element < -3, 2 elements < 3 (space-separated)
     EXPECT_TRUE(errors.str().empty());
 }
 
 TEST_F(AVLTreeIntegrationTest, ValidEmptyTreeQueries) {
-    std::istringstream input("m 1\nn 5");
+    std::istringstream input("m 1 n 5");
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(output.str(), "\n0\n"); // Empty line for find_min, 0 for number_smaller
+    EXPECT_EQ(output.str(), "0"); // Space for empty find_min, 0 for number_smaller
     EXPECT_TRUE(errors.str().empty());
 }
 
 TEST_F(AVLTreeIntegrationTest, ValidFindMinOutOfBounds) {
-    std::istringstream input("k 5 10\nm 5"); // Only 2 elements, asking for 5th
+    std::istringstream input("k 5 10 m 5"); // Only 2 elements, asking for 5th
     std::ostringstream output;
     std::ostringstream errors;
     
     int result = integration.executeFromStream(input, output, errors);
     
     EXPECT_EQ(result, 0);
-    EXPECT_EQ(output.str(), "\n"); // Empty line for no result
+    EXPECT_EQ(output.str(), ""); // Empty output for no result
+    EXPECT_TRUE(errors.str().empty());
+}
+
+// Additional tests for compact format
+TEST_F(AVLTreeIntegrationTest, CompactFormatSingleLine) {
+    std::istringstream input("k 1 2 3 m 1 n 2 k 4 m 2 n 5");
+    std::ostringstream output;
+    std::ostringstream errors;
+    
+    int result = integration.executeFromStream(input, output, errors);
+    
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(output.str(), "1 1 2 4"); // Results: 1st=1, <2=1, 2nd=2, <5=4
+    EXPECT_TRUE(errors.str().empty());
+}
+
+TEST_F(AVLTreeIntegrationTest, CompactFormatMixedLines) {
+    std::istringstream input("k 10 20\nm 1 n 15 k 15 25\nm 2 n 30");
+    std::ostringstream output;
+    std::ostringstream errors;
+    
+    int result = integration.executeFromStream(input, output, errors);
+    
+    EXPECT_EQ(result, 0);
+    EXPECT_EQ(output.str(), "10 1 15 4"); // Results: 1st=10, <15=1, 2nd=15, <30=4
     EXPECT_TRUE(errors.str().empty());
 }

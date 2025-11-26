@@ -15,6 +15,7 @@ add_library(SearchingTreeLib
     src/CommandsParser.cpp
     src/AVLTree.cpp
     src/TreeNodePool.cpp
+    src/AVLTreeIntegration.cpp
 )
 
 # Target include directories

@@ -122,6 +122,6 @@ bool CommandsParser::is_number(const std::string& s) {
 // Static member definition
 const std::unordered_map<TreeCommand, std::string> CommandsParser::commandNames = {
     {TreeCommand::add, "add"},
-    {TreeCommand::find_min, "find_smaller_nth"},
-    {TreeCommand::number_smaller, "number_smaller_than_n"}
+    {TreeCommand::find_min, "find_min"},
+    {TreeCommand::number_smaller, "number_smaller"}
 };
