@@ -13,7 +13,6 @@ public:
     int executeFromStream(std::istream& input, std::ostream& output, std::ostream& error);
     // Clear state for testing
     void clear() {
-        tree.clear();
         parser.clear();
     }
     

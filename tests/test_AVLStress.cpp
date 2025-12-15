@@ -190,27 +190,7 @@ TEST_F(AVLTreeStressTest, QueryPerformanceLargeTree) {
     EXPECT_EQ(result.value(), 99998); // 50000th smallest in 0,2,4,... should be 99998
 }
 
-TEST_F(AVLTreeStressTest, ClearLargeTree) {
-    const int NUM_NODES = 100000;
-    
-    // Build large tree
-    for (int i = 0; i < NUM_NODES; ++i) {
-        tree->insert(i);
-    }
-    
-    EXPECT_EQ(tree->size(), NUM_NODES);
-    
-    auto start = std::chrono::high_resolution_clock::now();
-    tree->clear();
-    auto end = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    
-    std::cout << "Clearing " << NUM_NODES << " nodes took: " 
-              << duration.count() << " milliseconds" << std::endl;
-    
-    EXPECT_TRUE(tree->empty());
-    EXPECT_EQ(tree->size(), 0);
-}
+
 
 TEST_F(AVLTreeStressTest, CopyLargeTree) {
     const int NUM_NODES = 50000;

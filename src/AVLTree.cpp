@@ -6,9 +6,7 @@
 // Constructors & Destructor
 AVLTree::AVLTree() : pool(), root() {}
 
-AVLTree::~AVLTree() {
-    clear();
-}
+AVLTree::~AVLTree() = default;
 
 AVLTree::AVLTree(const AVLTree& other) : pool(), root() {
     copyAllValues(other);
@@ -22,7 +20,6 @@ AVLTree::AVLTree(AVLTree&& other) noexcept
 
 AVLTree& AVLTree::operator=(const AVLTree& other) {
     if (this != &other) {
-        clear();
         copyAllValues(other);
     }
     return *this;
@@ -30,7 +27,6 @@ AVLTree& AVLTree::operator=(const AVLTree& other) {
 
 AVLTree& AVLTree::operator=(AVLTree&& other) noexcept {
     if (this != &other) {
-        clear();
         pool = std::move(other.pool);
         root = std::move(other.root);
         other.root = NodeHandle();
@@ -38,13 +34,7 @@ AVLTree& AVLTree::operator=(AVLTree&& other) noexcept {
     return *this;
 }
 
-// Public interface
-void AVLTree::clear() {
-    if (root.isValid()) {
-        clearSubtreeIterative(root);
-        root = NodeHandle();
-    }
-}
+
 
 bool AVLTree::empty() const { 
     return !root.isValid(); 
