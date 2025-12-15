@@ -14,7 +14,7 @@ public:
     using NodeHandle = TreeResourceHandle;
 
     explicit TreeNodePool(size_t maxNodes = 1000000);
-    ~TreeNodePool();
+    ~TreeNodePool() = default;
 
     // Core memory management
     std::pair<NodeHandle, CreateResult> createNode() noexcept;
@@ -23,7 +23,6 @@ public:
     const TreeNode* accessNode(NodeHandle handle) const noexcept;
     bool deleteNode(NodeHandle handle) noexcept;
     bool isValidHandle(NodeHandle handle) const noexcept;
-    void clear() noexcept;
     
     // Memory management info
     size_t capacity() const noexcept;

@@ -18,6 +18,27 @@ protected:
     std::unique_ptr<TreeNodePool> pool;
 };
 
+TEST_F(TreeStructureTest, MemoryExhaustion) {
+    TreeNodePool pool(1);  // Only 1 node capacity
+    auto [h1, r1] = pool.createNode();
+    EXPECT_EQ(r1, TreeNodePool::CreateResult::Success);
+    
+    // This should handle failure gracefully
+    auto [h2, r2] = pool.createNode();
+    EXPECT_EQ(r2, TreeNodePool::CreateResult::TooManyNodes);
+    
+    // Your noexcept functions might terminate here if they throw
+}
+
+TEST_F(TreeStructureTest, InvalidHandleAccess) {
+    TreeNodePool pool;
+    NodeHandle invalidHandle{999999, 999999};  // Way out of bounds
+    
+    // This should not terminate
+    bool result = TreeStructure::setNodeValue(pool, invalidHandle, 42);
+    EXPECT_FALSE(result);  // Should return false, not terminate
+}
+
 TEST_F(TreeStructureTest, SetLeftChild) {
     auto [parentHandle, parentResult] = pool->createNode();
     auto [childHandle, childResult] = pool->createNode();

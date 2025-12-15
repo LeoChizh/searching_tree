@@ -136,25 +136,7 @@ TEST_F(TreeNodePoolTest, CapacityMethods) {
     EXPECT_EQ(pool->getAvailableCapacity(), 999999);
 }
 
-TEST_F(TreeNodePoolTest, ClearMethod) {
-    auto [handle1, result1] = pool->createNode();
-    auto [handle2, result2] = pool->createNode();
-    
-    EXPECT_EQ(pool->getActiveNodeCount(), 2);
-    EXPECT_TRUE(pool->isValidHandle(handle1));
-    EXPECT_TRUE(pool->isValidHandle(handle2));
-    
-    pool->clear();
-    
-    EXPECT_EQ(pool->getActiveNodeCount(), 0);
-    EXPECT_FALSE(pool->isValidHandle(handle1));
-    EXPECT_FALSE(pool->isValidHandle(handle2));
-    
-    // Should be able to create new nodes after clear
-    auto [newHandle, newResult] = pool->createNode();
-    EXPECT_EQ(newResult, TreeNodePool::CreateResult::Success);
-    EXPECT_EQ(pool->getActiveNodeCount(), 1);
-}
+
 
 TEST_F(TreeNodePoolTest, ManyNodes) {
     const int NUM_NODES = 100;

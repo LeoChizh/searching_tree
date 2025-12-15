@@ -7,9 +7,6 @@ TreeNodePool::TreeNodePool(size_t maxNodes)
     nodes.reserve(std::min(maxNodes, size_t(1000)));
 }
 
-TreeNodePool::~TreeNodePool() {
-    clear();
-}
 
 std::pair<TreeNodePool::NodeHandle, TreeNodePool::CreateResult> 
 TreeNodePool::createNode() noexcept {
@@ -76,10 +73,6 @@ bool TreeNodePool::isValidHandle(NodeHandle handle) const noexcept {
     return accessNode(handle) != nullptr;
 }
 
-void TreeNodePool::clear() noexcept {
-    nodes.clear();
-    while (!freeIndices.empty()) freeIndices.pop();
-}
 
 size_t TreeNodePool::capacity() const noexcept { 
     return maxNodes; 

@@ -44,7 +44,6 @@ void AVLTree::clear() {
         clearSubtreeIterative(root);
         root = NodeHandle();
     }
-    pool.clear(); // Clear the entire pool
 }
 
 bool AVLTree::empty() const { 
