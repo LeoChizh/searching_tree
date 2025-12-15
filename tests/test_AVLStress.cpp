@@ -7,37 +7,29 @@
 
 class AVLTreeStressTest : public ::testing::Test {
 protected:
-    void SetUp() override {
-        tree = std::make_unique<AVLTree>();
-    }
-
-    void TearDown() override {
-        tree.reset();
-    }
-
-    std::unique_ptr<AVLTree> tree;
+    AVLTree tree;
 };
 
 TEST_F(AVLTreeStressTest, LargeSequentialInsertion) {
     const int NUM_NODES = 100000;
     
     for (int i = 0; i < NUM_NODES; ++i) {
-        EXPECT_TRUE(tree->insert(i));
+        EXPECT_TRUE(tree.insert(i));
     }
     
-    EXPECT_EQ(tree->size(), NUM_NODES);
+    EXPECT_EQ(tree.size(), NUM_NODES);
     
     // Verify all values are present
     for (int i = 0; i < NUM_NODES; i += 1000) {
-        EXPECT_TRUE(tree->contains(i));
+        EXPECT_TRUE(tree.contains(i));
     }
     
     // Tree should be balanced (height should be logarithmic)
-    int height = tree->getHeight();
+    int height = tree.getHeight();
     int maxExpectedHeight = 2 * static_cast<int>(std::log2(NUM_NODES + 1));
     EXPECT_LE(height, maxExpectedHeight);
     
-    std::cout << "Large sequential tree - Size: " << tree->size() 
+    std::cout << "Large sequential tree - Size: " << tree.size() 
               << ", Height: " << height 
               << ", Max expected: " << maxExpectedHeight << std::endl;
 }
@@ -54,25 +46,25 @@ TEST_F(AVLTreeStressTest, LargeRandomInsertion) {
     int successful_insertions = 0;
     for (int i = 0; i < NUM_NODES; ++i) {
         int value = dis(gen);
-        if (tree->insert(value)) {
+        if (tree.insert(value)) {
             successful_insertions++;
             values.push_back(value);
         }
     }
     
     // Test should check the actual number of successful insertions
-    EXPECT_EQ(tree->size(), successful_insertions);
+    EXPECT_EQ(tree.size(), successful_insertions);
     
     // Verify random sample of successfully inserted values
     if (successful_insertions > 0) {
         std::uniform_int_distribution<> index_dis(0, successful_insertions - 1);
         for (int i = 0; i < 100; ++i) {
             int index = index_dis(gen);
-            EXPECT_TRUE(tree->contains(values[index]));
+            EXPECT_TRUE(tree.contains(values[index]));
         }
     }
     
-    int height = tree->getHeight();
+    int height = tree.getHeight();
     int maxExpectedHeight = 2 * static_cast<int>(std::log2(successful_insertions + 1));
     EXPECT_LE(height, maxExpectedHeight);
     
@@ -90,22 +82,22 @@ TEST_F(AVLTreeStressTest, LargeUniqueRandomInsertion) {
     std::shuffle(values.begin(), values.end(), std::mt19937{std::random_device{}()});
     
     for (int value : values) {
-        EXPECT_TRUE(tree->insert(value));
+        EXPECT_TRUE(tree.insert(value));
     }
     
-    EXPECT_EQ(tree->size(), NUM_NODES);
+    EXPECT_EQ(tree.size(), NUM_NODES);
     
     // Verify all values are present
     for (int i = 0; i < 100; ++i) {
         int index = std::rand() % NUM_NODES;
-        EXPECT_TRUE(tree->contains(values[index]));
+        EXPECT_TRUE(tree.contains(values[index]));
     }
     
-    int height = tree->getHeight();
+    int height = tree.getHeight();
     int maxExpectedHeight = 2 * static_cast<int>(std::log2(NUM_NODES + 1));
     EXPECT_LE(height, maxExpectedHeight);
     
-    std::cout << "Large unique random tree - Size: " << tree->size() 
+    std::cout << "Large unique random tree - Size: " << tree.size() 
               << ", Height: " << height << std::endl;
 }
 
@@ -125,24 +117,24 @@ TEST_F(AVLTreeStressTest, MixedOperationsStressTest) {
         
         switch (operation) {
             case 0: // Insert
-                if (tree->insert(value)) {
+                if (tree.insert(value)) {
                     insertions++;
                 }
                 break;
             case 1: // Remove
-                if (tree->remove(value)) {
+                if (tree.remove(value)) {
                     deletions++;
                 }
                 break;
             case 2: // Contains
-                tree->contains(value);
+                tree.contains(value);
                 break;
         }
         
         // Periodically check tree integrity
         if (i % 10000 == 0) {
-            int height = tree->getHeight();
-            int size = tree->size();
+            int height = tree.getHeight();
+            int size = tree.size();
             std::cout << "Operation " << i << " - Size: " << size 
                       << ", Height: " << height << std::endl;
             
@@ -154,7 +146,7 @@ TEST_F(AVLTreeStressTest, MixedOperationsStressTest) {
         }
     }
     
-    std::cout << "Mixed operations completed - Final size: " << tree->size() 
+    std::cout << "Mixed operations completed - Final size: " << tree.size() 
               << ", Insertions: " << insertions << ", Deletions: " << deletions << std::endl;
 }
 
@@ -163,13 +155,13 @@ TEST_F(AVLTreeStressTest, QueryPerformanceLargeTree) {
     
     // Build large tree
     for (int i = 0; i < NUM_NODES; ++i) {
-        tree->insert(i * 2); // Even numbers only
+        tree.insert(i * 2); // Even numbers only
     }
     
     // Test countSmallerThan performance
     auto start = std::chrono::high_resolution_clock::now();
     
-    [[maybe_unused]]size_t count = tree->countSmallerThan(50000);
+    [[maybe_unused]]size_t count = tree.countSmallerThan(50000);
 
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
@@ -179,7 +171,7 @@ TEST_F(AVLTreeStressTest, QueryPerformanceLargeTree) {
     
     // Test findNthSmallest performance
     start = std::chrono::high_resolution_clock::now();
-    auto result = tree->findNthSmallest(50000);
+    auto result = tree.findNthSmallest(50000);
     end = std::chrono::high_resolution_clock::now();
     duration = std::chrono::duration_cast<std::chrono::microseconds>(end - start);
     
@@ -197,11 +189,11 @@ TEST_F(AVLTreeStressTest, CopyLargeTree) {
     
     // Build large tree
     for (int i = 0; i < NUM_NODES; ++i) {
-        tree->insert(i);
+        tree.insert(i);
     }
     
     auto start = std::chrono::high_resolution_clock::now();
-    AVLTree copy(*tree);
+    AVLTree copy(tree);
     auto end = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     
@@ -209,7 +201,7 @@ TEST_F(AVLTreeStressTest, CopyLargeTree) {
               << duration.count() << " milliseconds" << std::endl;
     
     EXPECT_EQ(copy.size(), NUM_NODES);
-    EXPECT_EQ(tree->size(), NUM_NODES);
+    EXPECT_EQ(tree.size(), NUM_NODES);
     
     // Verify copy contains same values
     for (int i = 0; i < NUM_NODES; i += 1000) {
@@ -230,24 +222,24 @@ TEST_F(AVLTreeStressTest, SimpleFuzzTest) {
         int value = val_dis(gen);
         
         if (operation == 0) {
-            tree->insert(value);
+            tree.insert(value);
         } else {
-            tree->remove(value);
+            tree.remove(value);
         }
         
         // Basic sanity check - tree should remain consistent
-        if (tree->size() > 0) {
-            auto first = tree->findNthSmallest(1);
+        if (tree.size() > 0) {
+            auto first = tree.findNthSmallest(1);
             EXPECT_TRUE(first.has_value());
             
-            auto last = tree->findNthSmallest(tree->size());
+            auto last = tree.findNthSmallest(tree.size());
             EXPECT_TRUE(last.has_value());
             
             EXPECT_LE(first.value(), last.value());
         }
     }
     
-    std::cout << "Fuzz test completed - Final size: " << tree->size() << std::endl;
+    std::cout << "Fuzz test completed - Final size: " << tree.size() << std::endl;
 }
 
 int main(int argc, char **argv) {
