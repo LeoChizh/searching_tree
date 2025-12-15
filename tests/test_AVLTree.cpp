@@ -244,6 +244,31 @@ TEST_F(AVLTreeTest, CopyAssignment) {
     EXPECT_EQ(other.size(), 2);
 }
 
+TEST_F(AVLTreeTest, CopyAssignmentClearsDestination) {
+    // Setup destination with values
+    tree.insert(100);
+    tree.insert(200);
+    tree.insert(300);
+    EXPECT_EQ(tree.size(), 3);
+    
+    // Create source with different values
+    AVLTree source;
+    source.insert(10);
+    source.insert(20);
+    EXPECT_EQ(source.size(), 2);
+    
+    // Copy assignment
+    tree = source;
+    
+    // Destination should ONLY have source values
+    EXPECT_EQ(tree.size(), 2);
+    EXPECT_TRUE(tree.contains(10));
+    EXPECT_TRUE(tree.contains(20));
+    EXPECT_FALSE(tree.contains(100));  // Old values should be gone!
+    EXPECT_FALSE(tree.contains(200));
+    EXPECT_FALSE(tree.contains(300));
+}
+
 TEST_F(AVLTreeTest, MoveConstructor) {
     tree.insert(10);
     tree.insert(20);

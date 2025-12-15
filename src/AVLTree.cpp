@@ -20,7 +20,8 @@ AVLTree::AVLTree(AVLTree&& other) noexcept
 
 AVLTree& AVLTree::operator=(const AVLTree& other) {
     if (this != &other) {
-        copyAllValues(other);
+        auto temp = AVLTree(other);
+        swap(temp);
     }
     return *this;
 }
