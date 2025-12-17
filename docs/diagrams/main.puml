@@ -153,7 +153,6 @@ class C_0006454029540425742497 {
 ..
 -balance(NodeHandle nodeHandle) : NodeHandle
 -calculateHeight(NodeHandle nodeHandle) const : int
-+clear() : void
 -clearSubtreeIterative(NodeHandle nodeHandle) : void
 +contains(int value) const : bool
 -copyAllValues(const AVLTree & other) : void

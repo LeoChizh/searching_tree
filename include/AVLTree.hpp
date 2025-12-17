@@ -19,7 +19,6 @@ public:
     AVLTree& operator=(AVLTree&& other) noexcept;
     
     // Public interface
-    void clear();
     bool empty() const;
     bool insert(int value);
     bool remove(int value);
