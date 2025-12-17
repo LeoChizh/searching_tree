@@ -1,0 +1,7 @@
+compilation_database_dir: build
+output_directory: docs/diagrams
+
+diagrams:
+  main:
+    type: class
+    glob: [src/*, include/*]

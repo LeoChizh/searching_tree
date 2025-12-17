@@ -240,7 +240,8 @@ TEST_F(AVLTreeTest, CopyAssignment) {
     EXPECT_TRUE(other.contains(20));
     
     // Self-assignment should work
-    other = other;
+    AVLTree& self_ref = other;
+    other = self_ref;
     EXPECT_EQ(other.size(), 2);
 }
 

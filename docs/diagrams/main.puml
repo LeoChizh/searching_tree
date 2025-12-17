@@ -1,0 +1,230 @@
+@startuml
+class "std::vector<int>" as C_0009228492206209329687
+class C_0009228492206209329687 {
+__
+}
+class "std::vector<TreeCommandInstance>" as C_0013729024915042105749
+class C_0013729024915042105749 {
+__
+}
+class "std::string" as C_0001275076681856179721
+class C_0001275076681856179721 {
+__
+}
+class "std::vector<std::string>" as C_0001347152004389415025
+class C_0001347152004389415025 {
+__
+}
+class "std::pair<TreeNodePool::NodeHandle,TreeNodePool::CreateResult>" as C_0015680313411092664621
+class C_0015680313411092664621 {
+__
+}
+class "std::vector<TreeNodePool::NodeEntry>" as C_0016311300492091341408
+class C_0016311300492091341408 {
+__
+}
+class "std::queue<size_t>" as C_0009166099390126630368
+class C_0009166099390126630368 {
+__
+}
+class "std::optional<int>" as C_0007528194561943701472
+class C_0007528194561943701472 {
+__
+}
+class "std::pair<AVLTree::NodeHandle,bool>" as C_0006689780071615721913
+class C_0006689780071615721913 {
+__
+}
+class "std::basic_istream<char>" as C_0005505409806480479128
+class C_0005505409806480479128 {
+__
+}
+class "std::basic_ostream<char>" as C_0012782362847443494988
+class C_0012782362847443494988 {
+__
+}
+enum "TreeCommand" as C_0018384105159513720673
+enum C_0018384105159513720673 {
+add
+find_min
+number_smaller
+}
+class "TreeCommandInstance" as C_0000206963873712237470
+class C_0000206963873712237470 {
++TreeCommandInstance(TreeCommand c, std::vector<int> vals = = {}) : void
+__
++cmd : TreeCommand
++values : const std::vector<int>
+}
+class "CommandsParser" as C_0003716953062364130094
+class C_0003716953062364130094 {
++add_command(TreeCommand cmd, std::vector<int> values = = {}) : void
++clear() : void
++get_commands() const : const std::vector<TreeCommandInstance> &
+-is_number(const std::string & s) : bool
++parse_from_stdin() : int
+-parse_tokens(const std::vector<std::string> & tokens) : int
++print_commands() : void
++size() const : size_t
+-tokenize_input() : std::vector<std::string>
+__
+-commandList : std::vector<TreeCommandInstance>
+{static} -commandNames : const std::unordered_map<TreeCommand,std::string>
+}
+class "TreeResourceHandle" as C_0004527661549954742723
+class C_0004527661549954742723 {
++TreeResourceHandle() : void
++TreeResourceHandle(size_t idx, uint32_t gen) : void
+..
++operator!=(const TreeResourceHandle & other) const : bool
++operator==(const TreeResourceHandle & other) const : bool
+..
++isValid() const : bool
+__
+{static} +INVALID_INDEX : const size_t
++generation : uint32_t
++index : size_t
+}
+class "TreeNode" as C_0006305358405894505070
+class C_0006305358405894505070 {
++TreeNode() = default : void
+..
++hasLeft() const : bool
++hasRight() const : bool
++isLeaf() const : bool
++isRoot() const : bool
+__
++balanceFactor : int
++height : int
++left : TreeResourceHandle
++parent : TreeResourceHandle
++right : TreeResourceHandle
++subtree_size : size_t
++value : int
+}
+class "TreeNodePool" as C_0006347356404530820894
+class C_0006347356404530820894 {
++TreeNodePool(size_t maxNodes = 1000000) : void
++TreeNodePool(const TreeNodePool &) = deleted : void
++TreeNodePool(TreeNodePool &&) = default : void
++~TreeNodePool() = default : void
+..
++operator=(const TreeNodePool &) = deleted : TreeNodePool &
++operator=(TreeNodePool &&) = default : TreeNodePool &
+..
++accessNode(NodeHandle handle) noexcept : TreeNode *
++accessNode(NodeHandle handle) const noexcept : const TreeNode *
++capacity() const noexcept : size_t
++createNode() noexcept : std::pair<NodeHandle,CreateResult>
++deleteNode(NodeHandle handle) noexcept : bool
++getActiveNodeCount() const noexcept : size_t
++getAvailableCapacity() const noexcept : size_t
++getTotalNodeCount() const noexcept : size_t
++isValidHandle(NodeHandle handle) const noexcept : bool
++tryCreateNode() noexcept : NodeHandle
+__
+-freeIndices : std::queue<size_t>
+-maxNodes : size_t
+-nodes : std::vector<NodeEntry>
+}
+enum "TreeNodePool::CreateResult" as C_0004488654193700499710
+enum C_0004488654193700499710 {
+Success
+TooManyNodes
+}
+class "TreeNodePool::NodeEntry" as C_0005477299307123638027
+class C_0005477299307123638027 {
+__
++generation : uint32_t
++isActive : bool
++node : TreeNode
+}
+class "AVLTree" as C_0006454029540425742497
+class C_0006454029540425742497 {
++AVLTree() : void
++AVLTree(const AVLTree & other) : void
++AVLTree(AVLTree && other) noexcept : void
+-AVLTree(const AVLTree &&) = deleted : void
++~AVLTree() : void
+..
++operator=(const AVLTree & other) : AVLTree &
++operator=(AVLTree && other) noexcept : AVLTree &
+-operator=(const AVLTree &&) = deleted : AVLTree &
+..
+-balance(NodeHandle nodeHandle) : NodeHandle
+-calculateHeight(NodeHandle nodeHandle) const : int
++clear() : void
+-clearSubtreeIterative(NodeHandle nodeHandle) : void
++contains(int value) const : bool
+-copyAllValues(const AVLTree & other) : void
+-countNodes(NodeHandle nodeHandle) const : size_t
++countSmallerThan(int target) const : size_t
+-countSmallerThanSubtree(NodeHandle node, int target) const : size_t
++empty() const : bool
+-findMin(NodeHandle nodeHandle) const : NodeHandle
+-findNode(NodeHandle nodeHandle, int value) const : NodeHandle
++findNthSmallest(size_t n) const : std::optional<int>
+-findNthSmallestSubtree(NodeHandle node, size_t n) const : std::optional<int>
++getHeight() const : int
++insert(int value) : bool
+-insertNode(NodeHandle nodeHandle, int value) : std::pair<NodeHandle,bool>
++remove(int value) : bool
+-removeNode(NodeHandle nodeHandle, int value) : std::pair<NodeHandle,bool>
+-rotateLeft(NodeHandle nodeHandle) : NodeHandle
+-rotateRight(NodeHandle nodeHandle) : NodeHandle
++size() const : size_t
++swap(AVLTree & other) noexcept : void
+-updateNode(NodeHandle nodeHandle) : void
++visualize() const : std::string
+-visualizeSubtree(NodeHandle node, int depth) const : std::string
+__
+-pool : TreeNodePool
+-root : NodeHandle
+}
+class "AVLTreeIntegration" as C_0010557247915342185553
+class C_0010557247915342185553 {
++clear() : void
+-executeCommand(const TreeCommandInstance & cmd, std::ostream & output, std::ostream & error) : bool
++executeFromStream(std::istream & input, std::ostream & output, std::ostream & error) : int
++getParser() const : const CommandsParser &
++getTree() const : const AVLTree &
+__
+-parser : CommandsParser
+-tree : AVLTree
+}
+C_0013729024915042105749 ..> C_0000206963873712237470
+C_0001347152004389415025 ..> C_0001275076681856179721
+C_0000206963873712237470 o-- C_0018384105159513720673 : +cmd
+C_0000206963873712237470 o-- C_0009228492206209329687 : +values
+C_0003716953062364130094 ..> C_0009228492206209329687
+C_0003716953062364130094 ..> C_0000206963873712237470
+C_0003716953062364130094 ..> C_0001347152004389415025
+C_0003716953062364130094 ..> C_0001275076681856179721
+C_0003716953062364130094 o-- C_0013729024915042105749 : -commandList
+C_0003716953062364130094 --> C_0018384105159513720673 : -commandNames
+C_0006305358405894505070 o-- C_0004527661549954742723 : +parent
+C_0006305358405894505070 o-- C_0004527661549954742723 : +left
+C_0006305358405894505070 o-- C_0004527661549954742723 : +right
+C_0006347356404530820894 ..> C_0015680313411092664621
+C_0006347356404530820894 ..> C_0004527661549954742723
+C_0006347356404530820894 ..> C_0004488654193700499710
+C_0006347356404530820894 ..> C_0006305358405894505070
+C_0006347356404530820894 o-- C_0016311300492091341408 : -nodes
+C_0006347356404530820894 o-- C_0009166099390126630368 : -freeIndices
+C_0004488654193700499710 --+ C_0006347356404530820894
+C_0005477299307123638027 --+ C_0006347356404530820894
+C_0005477299307123638027 o-- C_0006305358405894505070 : +node
+C_0006454029540425742497 ..> C_0001275076681856179721
+C_0006454029540425742497 ..> C_0007528194561943701472
+C_0006454029540425742497 ..> C_0006689780071615721913
+C_0006454029540425742497 o-- C_0006347356404530820894 : -pool
+C_0006454029540425742497 o-- C_0004527661549954742723 : -root
+C_0010557247915342185553 ..> C_0005505409806480479128
+C_0010557247915342185553 ..> C_0012782362847443494988
+C_0010557247915342185553 ..> C_0000206963873712237470
+C_0010557247915342185553 o-- C_0006454029540425742497 : -tree
+C_0010557247915342185553 o-- C_0003716953062364130094 : -parser
+
+'Generated with clang-uml, version 0.6.2
+'LLVM version Ubuntu clang version 18.1.3 (1ubuntu1)
+@enduml
